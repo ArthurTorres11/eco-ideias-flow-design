@@ -1,32 +1,89 @@
 
+import { useState, useEffect } from "react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer } from "recharts";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { Badge } from "@/components/ui/badge";
+import { useIdeas } from "@/contexts/IdeasContext";
+import { supabase } from "@/integrations/supabase/client";
+import { TrendingUp, Users, CheckCircle, Clock } from "lucide-react";
 
-const kpiData = [
-  { title: "Ideias Pendentes de Análise", value: "12", change: "+3 hoje" },
-  { title: "Total de Ideias Aprovadas", value: "47", change: "+5 este mês" },
-  { title: "Novos Usuários (Mês)", value: "23", change: "+15%" },
-  { title: "Taxa de Engajamento", value: "68%", change: "+2.3%" },
-];
-
-const chartData = [
-  { categoria: "Energia", ideias: 15 },
-  { categoria: "Água", ideias: 12 },
-  { categoria: "Resíduos", ideias: 8 },
-  { categoria: "Transporte", ideias: 6 },
-  { categoria: "Outros", ideias: 4 },
-];
-
-const recentIdeas = [
-  { id: 1, titulo: "Sistema de captação de água da chuva", autor: "Maria Silva" },
-  { id: 2, titulo: "Iluminação LED automática", autor: "João Santos" },
-  { id: 3, titulo: "Compostagem orgânica", autor: "Ana Costa" },
-  { id: 4, titulo: "Painéis solares no telhado", autor: "Carlos Lima" },
-  { id: 5, titulo: "Reciclagem de papel", autor: "Lucia Ferreira" },
-];
+const categoryMap: { [key: string]: string } = {
+  'water': 'Conservação de Água',
+  'energy': 'Eficiência Energética', 
+  'waste': 'Redução de Resíduos',
+  'transport': 'Transporte Sustentável',
+  'materials': 'Materiais Sustentáveis',
+  'biodiversity': 'Biodiversidade'
+};
 
 export default function AdminDashboard() {
+  const { ideas, loading } = useIdeas();
+  const [userCount, setUserCount] = useState(0);
+  const [loadingUsers, setLoadingUsers] = useState(true);
+
+  useEffect(() => {
+    fetchUserCount();
+  }, []);
+
+  const fetchUserCount = async () => {
+    try {
+      const { count, error } = await supabase
+        .from('profiles')
+        .select('*', { count: 'exact', head: true });
+      
+      if (!error && count !== null) {
+        setUserCount(count);
+      }
+    } catch (error) {
+      console.error('Error fetching user count:', error);
+    } finally {
+      setLoadingUsers(false);
+    }
+  };
+
+  // Calculate dynamic KPIs
+  const pendingIdeas = ideas.filter(idea => idea.status === 'Em Análise').length;
+  const approvedIdeas = ideas.filter(idea => idea.status === 'Aprovada').length;
+  const totalIdeas = ideas.length;
+  const approvalRate = totalIdeas > 0 ? Math.round((approvedIdeas / totalIdeas) * 100) : 0;
+
+  // Calculate chart data based on real ideas
+  const chartData = Object.entries(categoryMap).map(([key, name]) => ({
+    categoria: name,
+    ideias: ideas.filter(idea => idea.category === key).length
+  })).filter(item => item.ideias > 0);
+
+  // Get recent ideas (last 5)
+  const recentIdeas = ideas.slice(0, 5);
+
+  const kpiData = [
+    { 
+      title: "Ideias Pendentes de Análise", 
+      value: pendingIdeas.toString(), 
+      change: `${pendingIdeas} aguardando`,
+      icon: <Clock className="w-5 h-5 text-yellow-500" />
+    },
+    { 
+      title: "Total de Ideias Aprovadas", 
+      value: approvedIdeas.toString(), 
+      change: `${approvalRate}% aprovação`,
+      icon: <CheckCircle className="w-5 h-5 text-green-500" />
+    },
+    { 
+      title: "Total de Usuários", 
+      value: loadingUsers ? "..." : userCount.toString(), 
+      change: "usuários cadastrados",
+      icon: <Users className="w-5 h-5 text-blue-500" />
+    },
+    { 
+      title: "Total de Ideias", 
+      value: totalIdeas.toString(), 
+      change: `${ideas.length} submetidas`,
+      icon: <TrendingUp className="w-5 h-5 text-purple-500" />
+    },
+  ];
+
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Painel de Controle</h1>
@@ -36,7 +93,8 @@ export default function AdminDashboard() {
         {kpiData.map((kpi) => (
           <Card key={kpi.title}>
             <CardHeader className="pb-2">
-              <CardTitle className="text-sm font-medium text-gray-600">
+              <CardTitle className="text-sm font-medium text-gray-600 flex items-center gap-2">
+                {kpi.icon}
                 {kpi.title}
               </CardTitle>
             </CardHeader>
@@ -57,15 +115,25 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <ResponsiveContainer width="100%" height={300}>
-              <BarChart data={chartData}>
-                <CartesianGrid strokeDasharray="3 3" />
-                <XAxis dataKey="categoria" />
-                <YAxis />
-                <Tooltip />
-                <Bar dataKey="ideias" fill="#16a34a" />
-              </BarChart>
-            </ResponsiveContainer>
+            {loading ? (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-500">Carregando dados...</p>
+              </div>
+            ) : chartData.length > 0 ? (
+              <ResponsiveContainer width="100%" height={300}>
+                <BarChart data={chartData}>
+                  <CartesianGrid strokeDasharray="3 3" />
+                  <XAxis dataKey="categoria" />
+                  <YAxis />
+                  <Tooltip />
+                  <Bar dataKey="ideias" fill="#16a34a" />
+                </BarChart>
+              </ResponsiveContainer>
+            ) : (
+              <div className="h-[300px] flex items-center justify-center">
+                <p className="text-gray-500">Nenhuma ideia cadastrada ainda</p>
+              </div>
+            )}
           </CardContent>
         </Card>
 
@@ -77,22 +145,48 @@ export default function AdminDashboard() {
             </CardTitle>
           </CardHeader>
           <CardContent>
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Título</TableHead>
-                  <TableHead>Autor</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {recentIdeas.map((idea) => (
-                  <TableRow key={idea.id}>
-                    <TableCell className="font-medium">{idea.titulo}</TableCell>
-                    <TableCell>{idea.autor}</TableCell>
+            {loading ? (
+              <div className="py-8 text-center">
+                <p className="text-gray-500">Carregando ideias...</p>
+              </div>
+            ) : recentIdeas.length > 0 ? (
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Título</TableHead>
+                    <TableHead>Autor</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Data</TableHead>
                   </TableRow>
-                ))}
-              </TableBody>
-            </Table>
+                </TableHeader>
+                <TableBody>
+                  {recentIdeas.map((idea) => (
+                    <TableRow key={idea.id}>
+                      <TableCell className="font-medium max-w-xs">
+                        <div className="truncate">{idea.title}</div>
+                      </TableCell>
+                      <TableCell>{idea.author}</TableCell>
+                      <TableCell>
+                        <Badge variant={
+                          idea.status === 'Aprovada' ? 'default' : 
+                          idea.status === 'Em Análise' ? 'secondary' : 
+                          'destructive'
+                        }>
+                          {idea.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-sm text-gray-500">
+                        {idea.created_at}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            ) : (
+              <div className="py-8 text-center">
+                <p className="text-gray-500">Nenhuma ideia cadastrada ainda</p>
+              </div>
+            )}
           </CardContent>
         </Card>
       </div>
