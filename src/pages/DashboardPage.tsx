@@ -17,48 +17,25 @@ import {
   Clock
 } from "lucide-react";
 import Header from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIdeas } from "@/contexts/IdeasContext";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { getUserIdeas } = useIdeas();
 
-  const ideas = [
-    {
-      id: 1,
-      title: "Sistema de Captação de Água da Chuva",
-      description: "Implementar sistema para reutilização da água da chuva nos escritórios.",
-      status: "Aprovada",
-      statusColor: "bg-green-100 text-green-800 border-green-200",
-      category: "water",
-      date: "15 Nov 2024",
-      impact: "2.450L economia mensal"
-    },
-    {
-      id: 2,
-      title: "Programa de Carona Solidária",
-      description: "Aplicativo interno para funcionários compartilharem caronas.",
-      status: "Em Análise",
-      statusColor: "bg-yellow-100 text-yellow-800 border-yellow-200",
-      category: "transport",
-      date: "12 Nov 2024",
-      impact: "Redução de 30% nas emissões"
-    },
-    {
-      id: 3,
-      title: "Compostagem nos Escritórios",
-      description: "Criar pontos de compostagem para resíduos orgânicos.",
-      status: "Aprovada",
-      statusColor: "bg-green-100 text-green-800 border-green-200",
-      category: "waste",
-      date: "08 Nov 2024",
-      impact: "80% redução resíduos orgânicos"
-    },
-  ];
+  // Get user's ideas
+  const userIdeas = user ? getUserIdeas(user.id) : [];
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
       case 'water': return <Droplet className="w-5 h-5 text-blue-500" />;
       case 'transport': return <TrendingUp className="w-5 h-5 text-purple-500" />;
       case 'waste': return <Recycle className="w-5 h-5 text-orange-500" />;
+      case 'energy': return <Bolt className="w-5 h-5 text-yellow-500" />;
+      case 'materials': return <Recycle className="w-5 h-5 text-gray-500" />;
+      case 'biodiversity': return <Leaf className="w-5 h-5 text-green-500" />;
       default: return <Leaf className="w-5 h-5 text-green-500" />;
     }
   };
@@ -69,12 +46,46 @@ const DashboardPage = () => {
       <Clock className="w-4 h-4 text-yellow-600" />;
   };
 
-  const achievements = [
-    { name: "Primeira Ideia", icon: <Star className="w-4 h-4" />, earned: true },
-    { name: "Eco Inovador", icon: <Lightbulb className="w-4 h-4" />, earned: true },
-    { name: "Impacto Verde", icon: <Leaf className="w-4 h-4" />, earned: false },
-    { name: "Super Colaborador", icon: <Award className="w-4 h-4" />, earned: false },
-  ];
+  const getStatusColor = (status: string) => {
+    switch (status) {
+      case "Aprovada": return "bg-green-100 text-green-800 border-green-200";
+      case "Em Análise": return "bg-yellow-100 text-yellow-800 border-yellow-200";
+      case "Reprovada": return "bg-red-100 text-red-800 border-red-200";
+      default: return "bg-gray-100 text-gray-800 border-gray-200";
+    }
+  };
+
+  const approvedIdeas = userIdeas.filter(idea => idea.status === 'Aprovada');
+  const approvalRate = userIdeas.length > 0 ? Math.round((approvedIdeas.length / userIdeas.length) * 100) : 0;
+
+  // Calculate dynamic achievements based on user's ideas
+  const getAchievements = () => {
+    const achievements = [
+      { 
+        name: "Primeira Ideia", 
+        icon: <Star className="w-4 h-4" />, 
+        earned: userIdeas.length > 0 
+      },
+      { 
+        name: "Eco Inovador", 
+        icon: <Lightbulb className="w-4 h-4" />, 
+        earned: approvedIdeas.length >= 2 
+      },
+      { 
+        name: "Impacto Verde", 
+        icon: <Leaf className="w-4 h-4" />, 
+        earned: approvedIdeas.length >= 3 
+      },
+      { 
+        name: "Super Colaborador", 
+        icon: <Award className="w-4 h-4" />, 
+        earned: userIdeas.length >= 5 
+      },
+    ];
+    return achievements;
+  };
+
+  const achievements = getAchievements();
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-gray-50 to-green-50">
@@ -85,7 +96,7 @@ const DashboardPage = () => {
         <section className="text-center space-y-6">
           <div className="space-y-2">
             <h1 className="text-4xl font-bold text-gray-900">
-              Bem-vindo, <span className="text-green-700">João Silva</span>!
+              Bem-vindo, <span className="text-green-700">{user?.name || 'Usuário'}</span>!
             </h1>
             <p className="text-lg text-gray-600">
               Continue fazendo a diferença com suas ideias sustentáveis
@@ -114,43 +125,60 @@ const DashboardPage = () => {
                 Minhas Ideias
               </h2>
               <Badge variant="outline" className="text-green-700 border-green-200">
-                {ideas.length} ideias
+                {userIdeas.length} ideias
               </Badge>
             </div>
 
             <div className="space-y-4">
-              {ideas.map((idea, index) => (
-                <Card key={idea.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-green-500 bg-gradient-to-r from-white to-green-50/30">
-                  <CardContent className="p-6">
-                    <div className="flex items-start gap-4">
-                      <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border">
-                        {getCategoryIcon(idea.category)}
-                      </div>
-                      
-                      <div className="flex-1 min-w-0">
-                        <div className="flex items-start justify-between mb-2">
-                          <h3 className="text-lg font-semibold text-gray-900 truncate">
-                            {idea.title}
-                          </h3>
-                          <Badge className={`${idea.statusColor} border flex items-center gap-1`}>
-                            {getStatusIcon(idea.status)}
-                            {idea.status}
-                          </Badge>
+              {userIdeas.length > 0 ? (
+                userIdeas.map((idea) => (
+                  <Card key={idea.id} className="hover:shadow-lg transition-all duration-300 border-l-4 border-l-green-500 bg-gradient-to-r from-white to-green-50/30">
+                    <CardContent className="p-6">
+                      <div className="flex items-start gap-4">
+                        <div className="flex-shrink-0 w-12 h-12 bg-white rounded-full flex items-center justify-center shadow-sm border">
+                          {getCategoryIcon(idea.category)}
                         </div>
                         
-                        <p className="text-gray-600 text-sm mb-3 line-clamp-2">
-                          {idea.description}
-                        </p>
-                        
-                        <div className="flex items-center justify-between text-sm">
-                          <span className="text-gray-500">{idea.date}</span>
-                          <span className="text-green-600 font-medium">{idea.impact}</span>
+                        <div className="flex-1 min-w-0">
+                          <div className="flex items-start justify-between mb-2">
+                            <h3 className="text-lg font-semibold text-gray-900 truncate">
+                              {idea.title}
+                            </h3>
+                            <Badge className={`${getStatusColor(idea.status)} border flex items-center gap-1`}>
+                              {getStatusIcon(idea.status)}
+                              {idea.status}
+                            </Badge>
+                          </div>
+                          
+                          <p className="text-gray-600 text-sm mb-3 line-clamp-2">
+                            {idea.description}
+                          </p>
+                          
+                          <div className="flex items-center justify-between text-sm">
+                            <span className="text-gray-500">{idea.date}</span>
+                            <span className="text-green-600 font-medium">{idea.impact}</span>
+                          </div>
                         </div>
                       </div>
-                    </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : (
+                <Card className="border-dashed border-2 border-gray-300">
+                  <CardContent className="p-8 text-center">
+                    <Lightbulb className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Nenhuma ideia cadastrada ainda</h3>
+                    <p className="text-gray-500 mb-4">Comece a fazer a diferença submetendo sua primeira eco-ideia!</p>
+                    <Button
+                      onClick={() => navigate("/new-idea")}
+                      className="bg-green-600 hover:bg-green-700 text-white"
+                    >
+                      <Lightbulb className="w-4 h-4 mr-2" />
+                      Submeter Primeira Ideia
+                    </Button>
                   </CardContent>
                 </Card>
-              ))}
+              )}
             </div>
           </section>
 
@@ -165,44 +193,60 @@ const DashboardPage = () => {
                 </CardTitle>
               </CardHeader>
               <CardContent className="space-y-6">
-                {/* Water Impact */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Droplet className="w-5 h-5 text-blue-500" />
-                      <span className="font-medium text-gray-700">Água economizada</span>
+                {approvedIdeas.length > 0 ? (
+                  <>
+                    {/* Water Impact */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Droplet className="w-5 h-5 text-blue-500" />
+                          <span className="font-medium text-gray-700">Água economizada</span>
+                        </div>
+                        <span className="text-2xl font-bold text-blue-600">
+                          {approvedIdeas.length * 850}L
+                        </span>
+                      </div>
+                      <Progress value={Math.min((approvedIdeas.length * 25), 100)} className="h-3 bg-blue-100" />
+                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 25), 100)}% da meta mensal</p>
                     </div>
-                    <span className="text-2xl font-bold text-blue-600">2.450L</span>
-                  </div>
-                  <Progress value={75} className="h-3 bg-blue-100" />
-                  <p className="text-xs text-gray-500">75% da meta mensal</p>
-                </div>
 
-                {/* Energy Impact */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Bolt className="w-5 h-5 text-yellow-500" />
-                      <span className="font-medium text-gray-700">Energia poupada</span>
+                    {/* Energy Impact */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Bolt className="w-5 h-5 text-yellow-500" />
+                          <span className="font-medium text-gray-700">Energia poupada</span>
+                        </div>
+                        <span className="text-2xl font-bold text-yellow-600">
+                          {approvedIdeas.length * 52} kWh
+                        </span>
+                      </div>
+                      <Progress value={Math.min((approvedIdeas.length * 20), 100)} className="h-3 bg-yellow-100" />
+                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 20), 100)}% da meta mensal</p>
                     </div>
-                    <span className="text-2xl font-bold text-yellow-600">156 kWh</span>
-                  </div>
-                  <Progress value={60} className="h-3 bg-yellow-100" />
-                  <p className="text-xs text-gray-500">60% da meta mensal</p>
-                </div>
 
-                {/* CO2 Reduction */}
-                <div className="space-y-3">
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-2">
-                      <Leaf className="w-5 h-5 text-green-500" />
-                      <span className="font-medium text-gray-700">CO₂ reduzido</span>
+                    {/* CO2 Reduction */}
+                    <div className="space-y-3">
+                      <div className="flex items-center justify-between">
+                        <div className="flex items-center gap-2">
+                          <Leaf className="w-5 h-5 text-green-500" />
+                          <span className="font-medium text-gray-700">CO₂ reduzido</span>
+                        </div>
+                        <span className="text-2xl font-bold text-green-600">
+                          {approvedIdeas.length * 29} kg
+                        </span>
+                      </div>
+                      <Progress value={Math.min((approvedIdeas.length * 15), 100)} className="h-3 bg-green-100" />
+                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 15), 100)}% da meta mensal</p>
                     </div>
-                    <span className="text-2xl font-bold text-green-600">89 kg</span>
+                  </>
+                ) : (
+                  <div className="text-center py-8">
+                    <TrendingUp className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                    <h3 className="text-lg font-medium text-gray-600 mb-2">Seu impacto aparecerá aqui</h3>
+                    <p className="text-gray-500">Submeta e aprove ideias para ver seu impacto ambiental!</p>
                   </div>
-                  <Progress value={45} className="h-3 bg-green-100" />
-                  <p className="text-xs text-gray-500">45% da meta mensal</p>
-                </div>
+                )}
               </CardContent>
             </Card>
 
@@ -244,12 +288,12 @@ const DashboardPage = () => {
               <CardContent className="p-6 text-center">
                 <div className="space-y-4">
                   <div>
-                    <p className="text-3xl font-bold text-green-400">3</p>
+                    <p className="text-3xl font-bold text-green-400">{approvedIdeas.length}</p>
                     <p className="text-sm text-gray-300">Ideias Aprovadas</p>
                   </div>
                   <div className="h-px bg-gray-700"></div>
                   <div>
-                    <p className="text-2xl font-bold text-blue-400">92%</p>
+                    <p className="text-2xl font-bold text-blue-400">{approvalRate}%</p>
                     <p className="text-sm text-gray-300">Taxa de Aprovação</p>
                   </div>
                 </div>

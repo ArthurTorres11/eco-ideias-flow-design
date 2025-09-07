@@ -6,13 +6,16 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Leaf } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { useAuth } from "@/contexts/AuthContext";
 
 const LoginPage = () => {
   const [email, setEmail] = useState("");
   const [password, setPassword] = useState("");
+  const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
+  const { login } = useAuth();
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!email || !password) {
@@ -24,13 +27,39 @@ const LoginPage = () => {
       return;
     }
 
-    // Simulate login success
-    toast({
-      title: "Login realizado com sucesso!",
-      description: "Bem-vindo ao Eco-Ideias.",
-    });
+    setIsLoading(true);
     
-    navigate("/dashboard");
+    try {
+      const success = await login(email, password);
+      
+      if (success) {
+        toast({
+          title: "Login realizado com sucesso!",
+          description: "Bem-vindo ao Eco-Ideias.",
+        });
+        
+        // Redirect based on user role
+        if (email === 'admin@eco-ideias.com') {
+          navigate("/admin");
+        } else {
+          navigate("/dashboard");
+        }
+      } else {
+        toast({
+          title: "Erro",
+          description: "Email ou senha incorretos.",
+          variant: "destructive",
+        });
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro durante o login.",
+        variant: "destructive",
+      });
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   return (
@@ -64,17 +93,22 @@ const LoginPage = () => {
             </div>
             <Button
               type="submit"
+              disabled={isLoading}
               className="w-full eco-green-dark hover:bg-green-800 text-white font-medium"
             >
-              Entrar
+              {isLoading ? "Entrando..." : "Entrar"}
             </Button>
             <div className="text-center">
               <button
                 type="button"
+                onClick={() => navigate("/forgot-password")}
                 className="text-sm text-green-700 hover:text-green-800 hover:underline"
               >
                 Esqueci minha senha
               </button>
+            </div>
+            <div className="text-center text-xs text-gray-500 mt-4">
+              <p>Demo Admin: admin@eco-ideias.com / admin123</p>
             </div>
           </form>
         </CardContent>

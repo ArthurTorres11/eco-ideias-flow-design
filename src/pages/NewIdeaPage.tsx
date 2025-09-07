@@ -9,9 +9,13 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Label } from "@/components/ui/label";
 import { toast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
+import { useAuth } from "@/contexts/AuthContext";
+import { useIdeas } from "@/contexts/IdeasContext";
 
 const NewIdeaPage = () => {
   const navigate = useNavigate();
+  const { user } = useAuth();
+  const { addIdea } = useIdeas();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -31,6 +35,31 @@ const NewIdeaPage = () => {
       });
       return;
     }
+
+    if (!user) {
+      toast({
+        title: "Erro",
+        description: "Você precisa estar logado para submeter uma ideia.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Create impact string
+    let impactString = "Impacto estimado";
+    if (formData.impactValue && formData.unit) {
+      impactString = `${formData.impactValue} ${formData.unit}`;
+    }
+
+    // Add idea to context
+    addIdea({
+      title: formData.title,
+      description: formData.description,
+      category: formData.category,
+      impact: impactString,
+      userId: user.id,
+      author: user.name,
+    });
 
     toast({
       title: "Ideia enviada com sucesso!",
