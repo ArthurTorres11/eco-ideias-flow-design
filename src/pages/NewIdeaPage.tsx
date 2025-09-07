@@ -23,8 +23,10 @@ const NewIdeaPage = () => {
     impactValue: "",
     unit: "",
   });
+  const [file, setFile] = useState<File | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const handleSubmit = (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
     if (!formData.title || !formData.description || !formData.category) {
@@ -45,28 +47,38 @@ const NewIdeaPage = () => {
       return;
     }
 
+    setIsSubmitting(true);
+
     // Create impact string
     let impactString = "Impacto estimado";
     if (formData.impactValue && formData.unit) {
       impactString = `${formData.impactValue} ${formData.unit}`;
     }
 
-    // Add idea to context
-    addIdea({
+    // Add idea to Supabase
+    const result = await addIdea({
       title: formData.title,
       description: formData.description,
       category: formData.category,
       impact: impactString,
-      userId: user.id,
-      author: user.name,
+      file: file || undefined,
     });
 
-    toast({
-      title: "Ideia enviada com sucesso!",
-      description: "Sua eco-ideia foi submetida para análise.",
-    });
-    
-    navigate("/dashboard");
+    setIsSubmitting(false);
+
+    if (result.success) {
+      toast({
+        title: "Ideia enviada com sucesso!",
+        description: "Sua eco-ideia foi submetida para análise.",
+      });
+      navigate("/dashboard");
+    } else {
+      toast({
+        title: "Erro",
+        description: result.error || "Erro ao enviar ideia.",
+        variant: "destructive",
+      });
+    }
   };
 
   const handleInputChange = (field: string, value: string) => {
@@ -166,12 +178,31 @@ const NewIdeaPage = () => {
                 </div>
               </div>
 
+              <div>
+                <Label htmlFor="file" className="text-base font-medium">
+                  Arquivo Anexo (opcional)
+                </Label>
+                <Input
+                  id="file"
+                  type="file"
+                  onChange={(e) => setFile(e.target.files?.[0] || null)}
+                  className="mt-2"
+                  accept="image/*,.pdf,.doc,.docx"
+                />
+                {file && (
+                  <p className="text-sm text-gray-600 mt-1">
+                    Arquivo selecionado: {file.name}
+                  </p>
+                )}
+              </div>
+
               <div className="pt-6">
                 <Button
                   type="submit"
-                  className="w-full eco-green-dark hover:bg-green-800 text-white text-lg py-6 h-auto"
+                  disabled={isSubmitting}
+                  className="w-full bg-green-600 hover:bg-green-700 text-white text-lg py-6 h-auto"
                 >
-                  Enviar Minha Ideia
+                  {isSubmitting ? "Enviando..." : "Enviar Minha Ideia"}
                 </Button>
               </div>
             </form>

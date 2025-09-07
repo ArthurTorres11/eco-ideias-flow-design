@@ -11,60 +11,56 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-
-const ideasData = [
-  {
-    id: 1,
-    titulo: "Sistema de captação de água da chuva",
-    autor: "Maria Silva",
-    categoria: "Água",
-    dataSubmissao: "2024-01-15",
-    status: "EM ANÁLISE"
-  },
-  {
-    id: 2,
-    titulo: "Iluminação LED automática",
-    autor: "João Santos",
-    categoria: "Energia",
-    dataSubmissao: "2024-01-14",
-    status: "APROVADA"
-  },
-  {
-    id: 3,
-    titulo: "Compostagem orgânica",
-    autor: "Ana Costa",
-    categoria: "Resíduos",
-    dataSubmissao: "2024-01-13",
-    status: "EM ANÁLISE"
-  },
-  {
-    id: 4,
-    titulo: "Painéis solares no telhado",
-    autor: "Carlos Lima",
-    categoria: "Energia",
-    dataSubmissao: "2024-01-12",
-    status: "REPROVADA"
-  },
-];
+import { Badge } from "@/components/ui/badge";
+import { toast } from "@/hooks/use-toast";
+import { useIdeas } from "@/contexts/IdeasContext";
+import { Eye, Download } from "lucide-react";
 
 const statusColors = {
-  "EM ANÁLISE": "bg-yellow-100 text-yellow-800",
-  "APROVADA": "bg-green-100 text-green-800",
-  "REPROVADA": "bg-red-100 text-red-800",
+  "Em Análise": "bg-yellow-100 text-yellow-800",
+  "Aprovada": "bg-green-100 text-green-800",
+  "Reprovada": "bg-red-100 text-red-800",
+};
+
+const categoryMap: { [key: string]: string } = {
+  'water': 'Conservação de Água',
+  'energy': 'Eficiência Energética', 
+  'waste': 'Redução de Resíduos',
+  'transport': 'Transporte Sustentável',
+  'materials': 'Materiais Sustentáveis',
+  'biodiversity': 'Biodiversidade'
 };
 
 export default function ManageIdeas() {
   const navigate = useNavigate();
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [categoryFilter, setCategoryFilter] = useState<string>("all");
+  const { ideas, loading, updateIdeaStatus } = useIdeas();
 
-  const filteredIdeas = ideasData.filter((idea) => {
-    return (statusFilter === "all" || idea.status === statusFilter) &&
-           (categoryFilter === "all" || idea.categoria === categoryFilter);
+  const filteredIdeas = ideas.filter((idea) => {
+    const categoryMatch = categoryFilter === "all" || idea.category === categoryFilter;
+    const statusMatch = statusFilter === "all" || idea.status === statusFilter;
+    return categoryMatch && statusMatch;
   });
 
-  const handleEvaluate = (ideaId: number) => {
+  const handleEvaluate = (ideaId: string) => {
     navigate(`/admin/ideas/${ideaId}/evaluate`);
+  };
+
+  const handleQuickStatusUpdate = async (ideaId: string, newStatus: 'Em Análise' | 'Aprovada' | 'Reprovada') => {
+    const result = await updateIdeaStatus(ideaId, newStatus);
+    if (result.success) {
+      toast({
+        title: "Status atualizado!",
+        description: `Ideia marcada como ${newStatus.toLowerCase()}.`,
+      });
+    } else {
+      toast({
+        title: "Erro",
+        description: result.error || "Erro ao atualizar status.",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -82,9 +78,9 @@ export default function ManageIdeas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todos os Status</SelectItem>
-                  <SelectItem value="EM ANÁLISE">Em Análise</SelectItem>
-                  <SelectItem value="APROVADA">Aprovada</SelectItem>
-                  <SelectItem value="REPROVADA">Reprovada</SelectItem>
+                  <SelectItem value="Em Análise">Em Análise</SelectItem>
+                  <SelectItem value="Aprovada">Aprovada</SelectItem>
+                  <SelectItem value="Reprovada">Reprovada</SelectItem>
                 </SelectContent>
               </Select>
               
@@ -94,10 +90,12 @@ export default function ManageIdeas() {
                 </SelectTrigger>
                 <SelectContent>
                   <SelectItem value="all">Todas as Categorias</SelectItem>
-                  <SelectItem value="Energia">Energia</SelectItem>
-                  <SelectItem value="Água">Água</SelectItem>
-                  <SelectItem value="Resíduos">Resíduos</SelectItem>
-                  <SelectItem value="Transporte">Transporte</SelectItem>
+                  <SelectItem value="water">Conservação de Água</SelectItem>
+                  <SelectItem value="energy">Eficiência Energética</SelectItem>
+                  <SelectItem value="waste">Redução de Resíduos</SelectItem>
+                  <SelectItem value="transport">Transporte Sustentável</SelectItem>
+                  <SelectItem value="materials">Materiais Sustentáveis</SelectItem>
+                  <SelectItem value="biodiversity">Biodiversidade</SelectItem>
                 </SelectContent>
               </Select>
             </div>
@@ -107,39 +105,95 @@ export default function ManageIdeas() {
           <Table>
             <TableHeader>
               <TableRow>
-                <TableHead>ID</TableHead>
                 <TableHead>Título</TableHead>
                 <TableHead>Autor</TableHead>
                 <TableHead>Categoria</TableHead>
                 <TableHead>Data de Submissão</TableHead>
                 <TableHead>Status</TableHead>
+                <TableHead>Arquivo</TableHead>
                 <TableHead>Ações</TableHead>
               </TableRow>
             </TableHeader>
             <TableBody>
-              {filteredIdeas.map((idea) => (
-                <TableRow key={idea.id}>
-                  <TableCell>{idea.id}</TableCell>
-                  <TableCell className="font-medium">{idea.titulo}</TableCell>
-                  <TableCell>{idea.autor}</TableCell>
-                  <TableCell>{idea.categoria}</TableCell>
-                  <TableCell>{new Date(idea.dataSubmissao).toLocaleDateString('pt-BR')}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${statusColors[idea.status as keyof typeof statusColors]}`}>
-                      {idea.status}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <Button
-                      variant="outline"
-                      size="sm"
-                      onClick={() => handleEvaluate(idea.id)}
-                    >
-                      Avaliar
-                    </Button>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8">
+                    Carregando ideias...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : filteredIdeas.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={7} className="text-center py-8 text-gray-500">
+                    Nenhuma ideia encontrada
+                  </TableCell>
+                </TableRow>
+              ) : (
+                filteredIdeas.map((idea) => (
+                  <TableRow key={idea.id}>
+                    <TableCell className="font-medium max-w-xs">
+                      <div>
+                        <p className="truncate">{idea.title}</p>
+                        <p className="text-xs text-gray-500 truncate">{idea.description}</p>
+                      </div>
+                    </TableCell>
+                    <TableCell>{idea.author}</TableCell>
+                    <TableCell>{categoryMap[idea.category] || idea.category}</TableCell>
+                    <TableCell>{idea.created_at}</TableCell>
+                    <TableCell>
+                      <Badge className={`${statusColors[idea.status as keyof typeof statusColors]}`}>
+                        {idea.status}
+                      </Badge>
+                    </TableCell>
+                    <TableCell>
+                      {idea.file_url ? (
+                        <a
+                          href={idea.file_url}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="inline-flex items-center gap-1 text-blue-600 hover:text-blue-800"
+                        >
+                          <Download className="w-4 h-4" />
+                          {idea.file_name}
+                        </a>
+                      ) : (
+                        <span className="text-gray-400 text-xs">Sem arquivo</span>
+                      )}
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEvaluate(idea.id)}
+                        >
+                          <Eye className="w-4 h-4 mr-1" />
+                          Ver
+                        </Button>
+                        {idea.status === 'Em Análise' && (
+                          <>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-green-600 hover:text-green-700"
+                              onClick={() => handleQuickStatusUpdate(idea.id, 'Aprovada')}
+                            >
+                              Aprovar
+                            </Button>
+                            <Button
+                              variant="outline"
+                              size="sm"
+                              className="text-red-600 hover:text-red-700"
+                              onClick={() => handleQuickStatusUpdate(idea.id, 'Reprovada')}
+                            >
+                              Reprovar
+                            </Button>
+                          </>
+                        )}
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>

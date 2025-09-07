@@ -13,12 +13,14 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, signup } = useAuth();
+  const [isSignup, setIsSignup] = useState(false);
+  const [name, setName] = useState("");
 
-  const handleLogin = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     
-    if (!email || !password) {
+    if (!email || !password || (isSignup && !name)) {
       toast({
         title: "Erro",
         description: "Por favor, preencha todos os campos.",
@@ -30,31 +32,43 @@ const LoginPage = () => {
     setIsLoading(true);
     
     try {
-      const success = await login(email, password);
-      
-      if (success) {
-        toast({
-          title: "Login realizado com sucesso!",
-          description: "Bem-vindo ao Eco-Ideias.",
-        });
+      if (isSignup) {
+        const result = await signup(email, password, name);
         
-        // Redirect based on user role
-        if (email === 'admin@eco-ideias.com') {
-          navigate("/admin");
+        if (result.success) {
+          toast({
+            title: "Conta criada com sucesso!",
+            description: "Verifique seu email para confirmar a conta.",
+          });
+          setIsSignup(false);
         } else {
-          navigate("/dashboard");
+          toast({
+            title: "Erro",
+            description: result.error || "Erro ao criar conta.",
+            variant: "destructive",
+          });
         }
       } else {
-        toast({
-          title: "Erro",
-          description: "Email ou senha incorretos.",
-          variant: "destructive",
-        });
+        const result = await login(email, password);
+        
+        if (result.success) {
+          toast({
+            title: "Login realizado com sucesso!",
+            description: "Bem-vindo ao Eco-Ideias.",
+          });
+          navigate("/dashboard");
+        } else {
+          toast({
+            title: "Erro",
+            description: result.error || "Email ou senha incorretos.",
+            variant: "destructive",
+          });
+        }
       }
     } catch (error) {
       toast({
         title: "Erro",
-        description: "Ocorreu um erro durante o login.",
+        description: "Ocorreu um erro durante a operação.",
         variant: "destructive",
       });
     } finally {
@@ -69,10 +83,23 @@ const LoginPage = () => {
           <div className="mx-auto w-16 h-16 eco-green-light rounded-full flex items-center justify-center mb-4">
             <Leaf className="w-8 h-8 text-green-700" />
           </div>
-          <h1 className="text-2xl font-bold text-gray-800">Eco-Ideias</h1>
+          <h1 className="text-2xl font-bold text-gray-800">
+            {isSignup ? "Criar Conta" : "Eco-Ideias"}
+          </h1>
         </CardHeader>
         <CardContent>
-          <form onSubmit={handleLogin} className="space-y-4">
+          <form onSubmit={handleSubmit} className="space-y-4">
+            {isSignup && (
+              <div>
+                <Input
+                  type="text"
+                  placeholder="Nome completo"
+                  value={name}
+                  onChange={(e) => setName(e.target.value)}
+                  className="w-full"
+                />
+              </div>
+            )}
             <div>
               <Input
                 type="email"
@@ -94,22 +121,38 @@ const LoginPage = () => {
             <Button
               type="submit"
               disabled={isLoading}
-              className="w-full eco-green-dark hover:bg-green-800 text-white font-medium"
+              className="w-full bg-green-600 hover:bg-green-700 text-white font-medium"
             >
-              {isLoading ? "Entrando..." : "Entrar"}
+              {isLoading ? (isSignup ? "Criando..." : "Entrando...") : (isSignup ? "Criar Conta" : "Entrar")}
             </Button>
-            <div className="text-center">
+            
+            <div className="text-center space-y-2">
               <button
                 type="button"
-                onClick={() => navigate("/forgot-password")}
+                onClick={() => setIsSignup(!isSignup)}
                 className="text-sm text-green-700 hover:text-green-800 hover:underline"
               >
-                Esqueci minha senha
+                {isSignup ? "Já tem conta? Fazer login" : "Não tem conta? Criar conta"}
               </button>
+              
+              {!isSignup && (
+                <div>
+                  <button
+                    type="button"
+                    onClick={() => navigate("/forgot-password")}
+                    className="text-sm text-green-700 hover:text-green-800 hover:underline"
+                  >
+                    Esqueci minha senha
+                  </button>
+                </div>
+              )}
             </div>
-            <div className="text-center text-xs text-gray-500 mt-4">
-              <p>Demo Admin: admin@eco-ideias.com / admin123</p>
-            </div>
+            
+            {!isSignup && (
+              <div className="text-center text-xs text-gray-500 mt-4">
+                <p>Demo Admin: admin@eco-ideias.com / admin123</p>
+              </div>
+            )}
           </form>
         </CardContent>
       </Card>

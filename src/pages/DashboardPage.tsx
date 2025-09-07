@@ -26,7 +26,7 @@ const DashboardPage = () => {
   const { getUserIdeas } = useIdeas();
 
   // Get user's ideas
-  const userIdeas = user ? getUserIdeas(user.id) : [];
+  const userIdeas = getUserIdeas();
 
   const getCategoryIcon = (category: string) => {
     switch (category) {
@@ -155,7 +155,7 @@ const DashboardPage = () => {
                           </p>
                           
                           <div className="flex items-center justify-between text-sm">
-                            <span className="text-gray-500">{idea.date}</span>
+                            <span className="text-gray-500">{idea.created_at}</span>
                             <span className="text-green-600 font-medium">{idea.impact}</span>
                           </div>
                         </div>

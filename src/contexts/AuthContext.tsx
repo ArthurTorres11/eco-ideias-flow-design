@@ -1,4 +1,6 @@
 import { createContext, useContext, useState, ReactNode, useEffect } from 'react';
+import { supabase } from '@/integrations/supabase/client';
+import { User as SupabaseUser, Session } from '@supabase/supabase-js';
 
 interface User {
   id: string;
@@ -9,9 +11,12 @@ interface User {
 
 interface AuthContextType {
   user: User | null;
-  login: (email: string, password: string) => Promise<boolean>;
-  logout: () => void;
+  session: Session | null;
+  login: (email: string, password: string) => Promise<{ success: boolean; error?: string }>;
+  signup: (email: string, password: string, name: string) => Promise<{ success: boolean; error?: string }>;
+  logout: () => Promise<void>;
   isAdmin: () => boolean;
+  loading: boolean;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -30,45 +35,110 @@ interface AuthProviderProps {
 
 export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [user, setUser] = useState<User | null>(null);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
-  // Check for stored user on mount
   useEffect(() => {
-    const storedUser = localStorage.getItem('eco-user');
-    if (storedUser) {
-      setUser(JSON.parse(storedUser));
-    }
+    // Set up auth state listener
+    const { data: { subscription } } = supabase.auth.onAuthStateChange(
+      async (event, session) => {
+        setSession(session);
+        if (session?.user) {
+          await fetchUserProfile(session.user);
+        } else {
+          setUser(null);
+        }
+        setLoading(false);
+      }
+    );
+
+    // Check for existing session
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session?.user) {
+        fetchUserProfile(session.user);
+      } else {
+        setLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
   }, []);
 
-  const login = async (email: string, password: string): Promise<boolean> => {
-    // Simple authentication logic
-    if (email === 'admin@eco-ideias.com' && password === 'admin123') {
-      const adminUser = {
-        id: 'admin-1',
-        name: 'Administrador',
-        email: 'admin@eco-ideias.com',
-        role: 'admin' as const
-      };
-      setUser(adminUser);
-      localStorage.setItem('eco-user', JSON.stringify(adminUser));
-      return true;
-    } else if (email && password) {
-      // Regular user login
-      const regularUser = {
-        id: 'user-1',
-        name: email.split('@')[0],
-        email,
-        role: 'user' as const
-      };
-      setUser(regularUser);
-      localStorage.setItem('eco-user', JSON.stringify(regularUser));
-      return true;
+  const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
+    try {
+      const { data: profile, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .eq('user_id', supabaseUser.id)
+        .single();
+
+      if (error) {
+        console.error('Error fetching profile:', error);
+        return;
+      }
+
+      if (profile) {
+        setUser({
+          id: supabaseUser.id,
+          name: profile.name,
+          email: profile.email,
+          role: profile.role as 'user' | 'admin'
+        });
+      }
+    } catch (error) {
+      console.error('Error fetching user profile:', error);
     }
-    return false;
   };
 
-  const logout = () => {
-    setUser(null);
-    localStorage.removeItem('eco-user');
+  const login = async (email: string, password: string) => {
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro ao fazer login' };
+    }
+  };
+
+  const signup = async (email: string, password: string, name: string) => {
+    try {
+      const { data, error } = await supabase.auth.signUp({
+        email,
+        password,
+        options: {
+          emailRedirectTo: `${window.location.origin}/`,
+          data: {
+            name: name
+          }
+        }
+      });
+
+      if (error) {
+        return { success: false, error: error.message };
+      }
+
+      return { success: true };
+    } catch (error) {
+      return { success: false, error: 'Erro ao criar conta' };
+    }
+  };
+
+  const logout = async () => {
+    try {
+      await supabase.auth.signOut();
+      setUser(null);
+      setSession(null);
+    } catch (error) {
+      console.error('Error logging out:', error);
+    }
   };
 
   const isAdmin = () => {
@@ -76,7 +146,15 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   return (
-    <AuthContext.Provider value={{ user, login, logout, isAdmin }}>
+    <AuthContext.Provider value={{ 
+      user, 
+      session, 
+      login, 
+      signup, 
+      logout, 
+      isAdmin, 
+      loading 
+    }}>
       {children}
     </AuthContext.Provider>
   );

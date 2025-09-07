@@ -5,6 +5,7 @@ import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardHeader } from "@/components/ui/card";
 import { Leaf, ArrowLeft } from "lucide-react";
 import { toast } from "@/hooks/use-toast";
+import { supabase } from "@/integrations/supabase/client";
 
 const ForgotPasswordPage = () => {
   const [email, setEmail] = useState("");
@@ -25,15 +26,33 @@ const ForgotPasswordPage = () => {
 
     setIsLoading(true);
     
-    // Simulate API call
-    setTimeout(() => {
-      toast({
-        title: "Email enviado!",
-        description: "Instruções para redefinir sua senha foram enviadas para seu email.",
+    try {
+      const { error } = await supabase.auth.resetPasswordForEmail(email, {
+        redirectTo: `${window.location.origin}/reset-password`,
       });
+
+      if (error) {
+        toast({
+          title: "Erro",
+          description: error.message,
+          variant: "destructive",
+        });
+      } else {
+        toast({
+          title: "Email enviado!",
+          description: "Verifique sua caixa de entrada para redefinir sua senha.",
+        });
+        navigate("/login");
+      }
+    } catch (error) {
+      toast({
+        title: "Erro",
+        description: "Ocorreu um erro ao enviar o email.",
+        variant: "destructive",
+      });
+    } finally {
       setIsLoading(false);
-      navigate("/");
-    }, 2000);
+    }
   };
 
   return (
