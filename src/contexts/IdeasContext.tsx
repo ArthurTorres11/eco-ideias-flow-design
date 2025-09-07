@@ -62,12 +62,10 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
     
     setLoading(true);
     try {
+      // Simplified query without join for better performance
       let query = supabase
         .from('ideas')
-        .select(`
-          *,
-          profiles(name)
-        `)
+        .select('*')
         .order('created_at', { ascending: false });
 
       // If user is not admin, only show their own ideas
@@ -75,14 +73,35 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
         query = query.eq('user_id', user?.id);
       }
 
-      const { data, error } = await query;
+      const { data: ideasData, error: ideasError } = await query;
 
-      if (error) {
-        console.error('Error fetching ideas:', error);
+      if (ideasError) {
+        console.error('Error fetching ideas:', ideasError);
         return;
       }
 
-      const formattedIdeas: Idea[] = (data || []).map(idea => ({
+      // Fetch profiles separately for better performance
+      const userIds = [...new Set(ideasData?.map(idea => idea.user_id) || [])];
+      let profiles: any[] = [];
+      
+      if (userIds.length > 0) {
+        const { data: profilesData, error: profilesError } = await supabase
+          .from('profiles')
+          .select('user_id, name')
+          .in('user_id', userIds);
+        
+        if (!profilesError) {
+          profiles = profilesData || [];
+        }
+      }
+
+      // Create a map for quick profile lookup
+      const profileMap = profiles.reduce((acc, profile) => {
+        acc[profile.user_id] = profile.name;
+        return acc;
+      }, {});
+
+      const formattedIdeas: Idea[] = (ideasData || []).map(idea => ({
         id: idea.id,
         title: idea.title,
         description: idea.description,
@@ -91,7 +110,7 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
         created_at: new Date(idea.created_at).toLocaleDateString('pt-BR'),
         impact: idea.impact,
         user_id: idea.user_id,
-        author: (idea.profiles as any)?.name || 'Usuário',
+        author: profileMap[idea.user_id] || 'Usuário',
         file_url: idea.file_url,
         file_name: idea.file_name
       }));
@@ -142,7 +161,7 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
         fileName = ideaData.file.name;
       }
 
-      const { error } = await supabase
+      const { data, error } = await supabase
         .from('ideas')
         .insert({
           title: ideaData.title,
@@ -152,14 +171,31 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
           user_id: user.id,
           file_url: fileUrl,
           file_name: fileName
-        });
+        })
+        .select()
+        .single();
 
       if (error) {
         console.error('Error adding idea:', error);
         return { success: false, error: 'Erro ao adicionar ideia' };
       }
 
-      await refreshIdeas();
+      // Add the new idea to the existing array for immediate update
+      const newIdea: Idea = {
+        id: data.id,
+        title: data.title,
+        description: data.description,
+        category: data.category,
+        status: data.status as 'Em Análise' | 'Aprovada' | 'Reprovada',
+        created_at: new Date(data.created_at).toLocaleDateString('pt-BR'),
+        impact: data.impact,
+        user_id: data.user_id,
+        author: user.name || 'Usuário',
+        file_url: data.file_url,
+        file_name: data.file_name
+      };
+
+      setIdeas(prevIdeas => [newIdea, ...prevIdeas]);
       return { success: true };
     } catch (error) {
       console.error('Error adding idea:', error);
@@ -185,7 +221,13 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
         return { success: false, error: 'Erro ao atualizar status' };
       }
 
-      await refreshIdeas();
+      // Update the idea in the local state for immediate feedback
+      setIdeas(prevIdeas => 
+        prevIdeas.map(idea => 
+          idea.id === ideaId ? { ...idea, status } : idea
+        )
+      );
+      
       return { success: true };
     } catch (error) {
       console.error('Error updating idea status:', error);
