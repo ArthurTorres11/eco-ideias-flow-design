@@ -71,10 +71,17 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .from('profiles')
         .select('*')
         .eq('user_id', supabaseUser.id)
-        .single();
+        .maybeSingle();
 
       if (error) {
         console.error('Error fetching profile:', error);
+        // Set default user data if profile doesn't exist yet
+        setUser({
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
+          email: supabaseUser.email || '',
+          role: 'user'
+        });
         return;
       }
 
@@ -85,9 +92,24 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           email: profile.email,
           role: profile.role as 'user' | 'admin'
         });
+      } else {
+        // No profile found, create a default user
+        setUser({
+          id: supabaseUser.id,
+          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
+          email: supabaseUser.email || '',
+          role: 'user'
+        });
       }
     } catch (error) {
       console.error('Error fetching user profile:', error);
+      // Set default user data as fallback
+      setUser({
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
+        email: supabaseUser.email || '',
+        role: 'user'
+      });
     }
   };
 
