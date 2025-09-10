@@ -1,5 +1,5 @@
 
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
@@ -13,9 +13,28 @@ const LoginPage = () => {
   const [password, setPassword] = useState("");
   const [isLoading, setIsLoading] = useState(false);
   const navigate = useNavigate();
-  const { login, signup } = useAuth();
+  const { login, signup, user, loading } = useAuth();
   const [isSignup, setIsSignup] = useState(false);
   const [name, setName] = useState("");
+
+  // Redirect if already logged in
+  useEffect(() => {
+    if (!loading && user) {
+      navigate("/dashboard");
+    }
+  }, [user, loading, navigate]);
+
+  // Show loading spinner while checking auth state
+  if (loading) {
+    return (
+      <div className="min-h-screen eco-bg flex items-center justify-center p-4">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-16 w-16 border-b-2 border-green-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -56,7 +75,10 @@ const LoginPage = () => {
             title: "Login realizado com sucesso!",
             description: "Bem-vindo ao Eco-Ideias.",
           });
-          navigate("/dashboard");
+          // Small delay to ensure auth state is updated
+          setTimeout(() => {
+            navigate("/dashboard");
+          }, 100);
         } else {
           toast({
             title: "Erro",

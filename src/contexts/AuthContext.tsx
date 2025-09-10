@@ -73,16 +73,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .eq('user_id', supabaseUser.id)
         .maybeSingle();
 
-      if (error) {
+      if (error && error.code !== 'PGRST116') {
         console.error('Error fetching profile:', error);
-        // Set default user data if profile doesn't exist yet
-        setUser({
-          id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
-          email: supabaseUser.email || '',
-          role: 'user'
-        });
-        return;
       }
 
       if (profile) {
@@ -93,17 +85,33 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
           role: profile.role as 'user' | 'admin'
         });
       } else {
-        // No profile found, create a default user
-        setUser({
+        // No profile found or error, create default user from auth data
+        const defaultUser = {
           id: supabaseUser.id,
           name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
           email: supabaseUser.email || '',
-          role: 'user'
-        });
+          role: 'user' as const
+        };
+        
+        setUser(defaultUser);
+        
+        // Try to create profile in background
+        try {
+          await supabase
+            .from('profiles')
+            .insert({
+              user_id: supabaseUser.id,
+              name: defaultUser.name,
+              email: defaultUser.email,
+              role: defaultUser.role
+            });
+        } catch (insertError) {
+          console.log('Profile creation failed (expected if exists):', insertError);
+        }
       }
     } catch (error) {
-      console.error('Error fetching user profile:', error);
-      // Set default user data as fallback
+      console.error('Error in fetchUserProfile:', error);
+      // Always set user data even on error
       setUser({
         id: supabaseUser.id,
         name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',

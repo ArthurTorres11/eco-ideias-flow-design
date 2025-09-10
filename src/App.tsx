@@ -16,6 +16,7 @@ import EvaluateIdea from "./pages/admin/EvaluateIdea";
 import ManageUsers from "./pages/admin/ManageUsers";
 import UserForm from "./pages/admin/UserForm";
 import Settings from "./pages/admin/Settings";
+import ProtectedRoute from "./components/ProtectedRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { IdeasProvider } from "./contexts/IdeasContext";
 
@@ -32,11 +33,23 @@ const App = () => (
             <Routes>
               <Route path="/" element={<LoginPage />} />
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
-              <Route path="/dashboard" element={<DashboardPage />} />
-              <Route path="/new-idea" element={<NewIdeaPage />} />
+              <Route path="/dashboard" element={
+                <ProtectedRoute>
+                  <DashboardPage />
+                </ProtectedRoute>
+              } />
+              <Route path="/new-idea" element={
+                <ProtectedRoute>
+                  <NewIdeaPage />
+                </ProtectedRoute>
+              } />
               
               {/* Admin Routes */}
-              <Route path="/admin" element={<AdminLayout />}>
+              <Route path="/admin" element={
+                <ProtectedRoute>
+                  <AdminLayout />
+                </ProtectedRoute>
+              }>
                 <Route index element={<AdminDashboard />} />
                 <Route path="ideas" element={<ManageIdeas />} />
                 <Route path="ideas/:ideaId/evaluate" element={<EvaluateIdea />} />
