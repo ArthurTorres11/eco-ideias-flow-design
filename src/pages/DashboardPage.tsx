@@ -19,7 +19,8 @@ import {
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIdeas } from "@/contexts/IdeasContext";
-import SustainabilityChat from "@/components/SustainabilityChat";
+import ChatPopup from "@/components/ChatPopup";
+import { ThemeToggle } from "@/components/ThemeToggle";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -104,16 +105,19 @@ const DashboardPage = () => {
             </p>
           </div>
           
-          <div className="relative">
-            <Button
-              onClick={() => navigate("/new-idea")}
-              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xl px-12 py-6 h-auto rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-              size="lg"
-            >
-              <Lightbulb className="w-6 h-6 mr-3" />
-              + Submeter Nova Ideia
-            </Button>
-            <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+          <div className="flex justify-center items-center gap-4">
+            <div className="relative">
+              <Button
+                onClick={() => navigate("/new-idea")}
+                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xl px-12 py-6 h-auto rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+                size="lg"
+              >
+                <Lightbulb className="w-6 h-6 mr-3" />
+                + Submeter Nova Ideia
+              </Button>
+              <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
+            </div>
+            <ThemeToggle />
           </div>
         </section>
 
@@ -301,12 +305,11 @@ const DashboardPage = () => {
               </CardContent>
             </Card>
             
-            {/* AI Assistant */}
-            <div className="mt-6">
-              <SustainabilityChat />
-            </div>
           </section>
         </div>
+        
+        {/* Chat Popup */}
+        <ChatPopup />
       </main>
     </div>
   );

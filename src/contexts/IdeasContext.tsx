@@ -58,7 +58,7 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
   }, [session]);
 
   const refreshIdeas = async () => {
-    if (!session) return;
+    if (!session || !user?.id) return;
     
     setLoading(true);
     try {
@@ -70,7 +70,7 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
 
       // If user is not admin, only show their own ideas
       if (user?.role !== 'admin') {
-        query = query.eq('user_id', user?.id);
+        query = query.eq('user_id', user.id);
       }
 
       const { data: ideasData, error: ideasError } = await query;
