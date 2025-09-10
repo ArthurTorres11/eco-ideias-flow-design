@@ -60,6 +60,53 @@ const DashboardPage = () => {
   const approvedIdeas = userIdeas.filter(idea => idea.status === 'Aprovada');
   const approvalRate = userIdeas.length > 0 ? Math.round((approvedIdeas.length / userIdeas.length) * 100) : 0;
 
+  // Calculate real impact from approved ideas
+  const calculateRealImpact = () => {
+    let totalWater = 0; // em litros
+    let totalEnergy = 0; // em kWh  
+    let totalCO2 = 0; // em kg
+
+    approvedIdeas.forEach(idea => {
+      const impact = idea.impact.toLowerCase();
+      
+      // Extract number from impact string
+      const numberMatch = impact.match(/(\d+(?:\.\d+)?)/);
+      const value = numberMatch ? parseFloat(numberMatch[1]) : 0;
+
+      // Categorize by unit and type
+      if (impact.includes('l') || impact.includes('litro')) {
+        totalWater += value;
+      } else if (impact.includes('kwh') || impact.includes('energia')) {
+        totalEnergy += value;
+      } else if (impact.includes('kg') || impact.includes('co2') || impact.includes('carbono')) {
+        totalCO2 += value;
+      } else {
+        // If no specific unit, categorize by idea category
+        switch (idea.category) {
+          case 'water':
+            totalWater += value;
+            break;
+          case 'energy':
+            totalEnergy += value;
+            break;
+          case 'waste':
+          case 'transport':
+          case 'materials':
+          case 'biodiversity':
+            totalCO2 += value;
+            break;
+          default:
+            totalEnergy += value;
+            break;
+        }
+      }
+    });
+
+    return { totalWater, totalEnergy, totalCO2 };
+  };
+
+  const { totalWater, totalEnergy, totalCO2 } = calculateRealImpact();
+
   // Calculate dynamic achievements based on user's ideas
   const getAchievements = () => {
     const achievements = [
@@ -205,11 +252,13 @@ const DashboardPage = () => {
                           <span className="font-medium text-gray-700">Água economizada</span>
                         </div>
                         <span className="text-2xl font-bold text-blue-600">
-                          {approvedIdeas.length * 850}L
+                          {totalWater > 0 ? `${totalWater.toLocaleString('pt-BR')}L` : '0L'}
                         </span>
                       </div>
-                      <Progress value={Math.min((approvedIdeas.length * 25), 100)} className="h-3 bg-blue-100" />
-                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 25), 100)}% da meta mensal</p>
+                      <Progress value={Math.min((totalWater / 100), 100)} className="h-3 bg-blue-100" />
+                      <p className="text-xs text-gray-500">
+                        {totalWater > 0 ? `${Math.min((totalWater / 100), 100).toFixed(1)}% da meta mensal (10.000L)` : 'Nenhuma economia registrada'}
+                      </p>
                     </div>
 
                     {/* Energy Impact */}
@@ -220,11 +269,13 @@ const DashboardPage = () => {
                           <span className="font-medium text-gray-700">Energia poupada</span>
                         </div>
                         <span className="text-2xl font-bold text-yellow-600">
-                          {approvedIdeas.length * 52} kWh
+                          {totalEnergy > 0 ? `${totalEnergy.toLocaleString('pt-BR')} kWh` : '0 kWh'}
                         </span>
                       </div>
-                      <Progress value={Math.min((approvedIdeas.length * 20), 100)} className="h-3 bg-yellow-100" />
-                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 20), 100)}% da meta mensal</p>
+                      <Progress value={Math.min((totalEnergy / 10), 100)} className="h-3 bg-yellow-100" />
+                      <p className="text-xs text-gray-500">
+                        {totalEnergy > 0 ? `${Math.min((totalEnergy / 10), 100).toFixed(1)}% da meta mensal (1.000 kWh)` : 'Nenhuma economia registrada'}
+                      </p>
                     </div>
 
                     {/* CO2 Reduction */}
@@ -235,11 +286,13 @@ const DashboardPage = () => {
                           <span className="font-medium text-gray-700">CO₂ reduzido</span>
                         </div>
                         <span className="text-2xl font-bold text-green-600">
-                          {approvedIdeas.length * 29} kg
+                          {totalCO2 > 0 ? `${totalCO2.toLocaleString('pt-BR')} kg` : '0 kg'}
                         </span>
                       </div>
-                      <Progress value={Math.min((approvedIdeas.length * 15), 100)} className="h-3 bg-green-100" />
-                      <p className="text-xs text-gray-500">{Math.min((approvedIdeas.length * 15), 100)}% da meta mensal</p>
+                      <Progress value={Math.min((totalCO2 / 5), 100)} className="h-3 bg-green-100" />
+                      <p className="text-xs text-gray-500">
+                        {totalCO2 > 0 ? `${Math.min((totalCO2 / 5), 100).toFixed(1)}% da meta mensal (500 kg)` : 'Nenhuma redução registrada'}
+                      </p>
                     </div>
                   </>
                 ) : (
