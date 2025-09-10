@@ -70,7 +70,10 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
 
       // If user is not admin, only show their own ideas
       if (user?.role !== 'admin') {
+        console.log('Filtering ideas for user:', user?.id); // Debug log
         query = query.eq('user_id', user.id);
+      } else {
+        console.log('Admin user - showing all ideas'); // Debug log
       }
 
       const { data: ideasData, error: ideasError } = await query;
@@ -79,6 +82,8 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
         console.error('Error fetching ideas:', ideasError);
         return;
       }
+
+      console.log('Ideas fetched:', ideasData?.length || 0); // Debug log
 
       // Fetch profiles separately for better performance
       const userIds = [...new Set(ideasData?.map(idea => idea.user_id) || [])];

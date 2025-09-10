@@ -20,7 +20,12 @@ const LoginPage = () => {
   // Redirect if already logged in
   useEffect(() => {
     if (!loading && user) {
-      navigate("/dashboard");
+      // Admin vai direto para painel administrativo
+      if (user.role === 'admin') {
+        navigate("/admin");
+      } else {
+        navigate("/dashboard");
+      }
     }
   }, [user, loading, navigate]);
 
@@ -75,10 +80,7 @@ const LoginPage = () => {
             title: "Login realizado com sucesso!",
             description: "Bem-vindo ao Eco-Ideias.",
           });
-          // Small delay to ensure auth state is updated
-          setTimeout(() => {
-            navigate("/dashboard");
-          }, 100);
+          // O redirecionamento será feito pelo useEffect quando user for atualizado
         } else {
           toast({
             title: "Erro",
