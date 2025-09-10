@@ -19,6 +19,7 @@ export type Database = {
           created_at: string
           description: string | null
           display_name: string
+          has_goals: boolean
           id: string
           name: string
           unit: string
@@ -28,6 +29,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name: string
+          has_goals?: boolean
           id?: string
           name: string
           unit?: string
@@ -37,6 +39,7 @@ export type Database = {
           created_at?: string
           description?: string | null
           display_name?: string
+          has_goals?: boolean
           id?: string
           name?: string
           unit?: string
