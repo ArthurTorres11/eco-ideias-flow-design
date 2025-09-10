@@ -52,13 +52,19 @@ export const IdeasProvider = ({ children }: IdeasProviderProps) => {
   const { user, session } = useAuth();
 
   useEffect(() => {
-    if (session) {
+    if (session && user) {
       refreshIdeas();
     }
-  }, [session]);
+  }, [session, user]);
 
   const refreshIdeas = async () => {
     if (!session || !user?.id) return;
+    
+    console.log('Refreshing ideas for user:', { 
+      userId: user.id, 
+      role: user.role, 
+      isAdmin: user.role === 'admin' 
+    });
     
     setLoading(true);
     try {
