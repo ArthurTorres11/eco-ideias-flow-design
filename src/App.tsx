@@ -15,6 +15,7 @@ import EvaluateIdea from "./pages/admin/EvaluateIdea";
 import ManageUsers from "./pages/admin/ManageUsers";
 import UserForm from "./pages/admin/UserForm";
 import Settings from "./pages/admin/Settings";
+import GoalsSettings from "./pages/admin/GoalsSettings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
 import UserRoute from "./components/UserRoute";
@@ -76,6 +77,7 @@ const App = () => (
                 <Route path="users" element={<ManageUsers />} />
                 <Route path="users/:userId/edit" element={<UserForm />} />
                 <Route path="users/new" element={<UserForm />} />
+                <Route path="goals" element={<GoalsSettings />} />
                 <Route path="settings" element={<Settings />} />
               </Route>
               

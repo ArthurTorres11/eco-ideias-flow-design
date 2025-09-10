@@ -6,7 +6,8 @@ import {
   Users, 
   Settings, 
   Leaf,
-  LogOut
+  LogOut,
+  Target
 } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { useAuth } from "@/contexts/AuthContext";
@@ -38,6 +39,11 @@ const adminMenuItems = [
     title: "Gerenciar Usuários",
     url: "/admin/users",
     icon: Users,
+  },
+  {
+    title: "Metas",
+    url: "/admin/goals",
+    icon: Target,
   },
   {
     title: "Configurações",

@@ -19,6 +19,7 @@ import {
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIdeas } from "@/contexts/IdeasContext";
+import { useGoals } from "@/hooks/useGoals";
 import ChatPopup from "@/components/ChatPopup";
 import { Plus } from "lucide-react";
 
@@ -26,6 +27,7 @@ const DashboardPage = () => {
   const navigate = useNavigate();
   const { user, isAdmin } = useAuth();
   const { getUserIdeas } = useIdeas();
+  const { goals } = useGoals();
 
   // Get user's ideas
   const userIdeas = getUserIdeas();
@@ -255,9 +257,9 @@ const DashboardPage = () => {
                           {totalWater > 0 ? `${totalWater.toLocaleString('pt-BR')}L` : '0L'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalWater / 100), 100)} className="h-3 bg-blue-100" />
+                      <Progress value={Math.min((totalWater / goals.goal_water_monthly) * 100, 100)} className="h-3 bg-blue-100" />
                       <p className="text-xs text-gray-500">
-                        {totalWater > 0 ? `${Math.min((totalWater / 100), 100).toFixed(1)}% da meta mensal (10.000L)` : 'Nenhuma economia registrada'}
+                        {totalWater > 0 ? `${Math.min((totalWater / goals.goal_water_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_water_monthly.toLocaleString('pt-BR')}L)` : 'Nenhuma economia registrada'}
                       </p>
                     </div>
 
@@ -272,9 +274,9 @@ const DashboardPage = () => {
                           {totalEnergy > 0 ? `${totalEnergy.toLocaleString('pt-BR')} kWh` : '0 kWh'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalEnergy / 10), 100)} className="h-3 bg-yellow-100" />
+                      <Progress value={Math.min((totalEnergy / goals.goal_energy_monthly) * 100, 100)} className="h-3 bg-yellow-100" />
                       <p className="text-xs text-gray-500">
-                        {totalEnergy > 0 ? `${Math.min((totalEnergy / 10), 100).toFixed(1)}% da meta mensal (1.000 kWh)` : 'Nenhuma economia registrada'}
+                        {totalEnergy > 0 ? `${Math.min((totalEnergy / goals.goal_energy_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_energy_monthly.toLocaleString('pt-BR')} kWh)` : 'Nenhuma economia registrada'}
                       </p>
                     </div>
 
@@ -289,9 +291,9 @@ const DashboardPage = () => {
                           {totalCO2 > 0 ? `${totalCO2.toLocaleString('pt-BR')} kg` : '0 kg'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalCO2 / 5), 100)} className="h-3 bg-green-100" />
+                      <Progress value={Math.min((totalCO2 / goals.goal_co2_monthly) * 100, 100)} className="h-3 bg-green-100" />
                       <p className="text-xs text-gray-500">
-                        {totalCO2 > 0 ? `${Math.min((totalCO2 / 5), 100).toFixed(1)}% da meta mensal (500 kg)` : 'Nenhuma redução registrada'}
+                        {totalCO2 > 0 ? `${Math.min((totalCO2 / goals.goal_co2_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_co2_monthly.toLocaleString('pt-BR')} kg)` : 'Nenhuma redução registrada'}
                       </p>
                     </div>
                   </>
