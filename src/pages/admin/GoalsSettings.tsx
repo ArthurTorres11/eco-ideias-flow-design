@@ -6,7 +6,6 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { useCategories } from '@/hooks/useCategories';
 import { Target, Save } from 'lucide-react';
 
 interface Goal {
@@ -15,45 +14,72 @@ interface Goal {
   description: string;
 }
 
+interface Category {
+  id: string;
+  name: string;
+  display_name: string;
+  description: string;
+  unit: string;
+}
+
 export default function GoalsSettings() {
   const [goals, setGoals] = useState<Goal[]>([]);
+  const [categories, setCategories] = useState<Category[]>([]);
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
-  const { categories, loading: categoriesLoading } = useCategories();
 
-  const goalPeriods = {
+  const goalCategories = {
     daily: {
       title: 'Metas Diárias',
       icon: <Target className="w-5 h-5" />,
-      suffix: '_daily'
+      period: 'daily'
     },
     weekly: {
       title: 'Metas Semanais', 
       icon: <Target className="w-5 h-5" />,
-      suffix: '_weekly'
+      period: 'weekly'
     },
     monthly: {
       title: 'Metas Mensais',
       icon: <Target className="w-5 h-5" />,
-      suffix: '_monthly'
+      period: 'monthly'
     }
   };
 
   useEffect(() => {
-    fetchGoals();
+    fetchData();
   }, []);
 
-  const fetchGoals = async () => {
+  const fetchData = async () => {
     try {
-      const { data, error } = await supabase
+      // Fetch categories
+      const { data: categoriesData, error: categoriesError } = await supabase
+        .from('categories')
+        .select('*')
+        .order('name');
+
+      if (categoriesError) {
+        console.error('Error fetching categories:', categoriesError);
+        toast({
+          title: "Erro",
+          description: "Erro ao carregar categorias",
+          variant: "destructive"
+        });
+        return;
+      }
+
+      setCategories(categoriesData || []);
+
+      // Fetch goals
+      const { data: goalsData, error: goalsError } = await supabase
         .from('settings')
         .select('key, value, description')
         .like('key', 'goal_%')
         .order('key');
 
-      if (error) {
-        console.error('Error fetching goals:', error);
+      if (goalsError) {
+        console.error('Error fetching goals:', goalsError);
         toast({
           title: "Erro",
           description: "Erro ao carregar metas",
@@ -62,12 +88,56 @@ export default function GoalsSettings() {
         return;
       }
 
-      setGoals(data || []);
+      setGoals(goalsData || []);
+
+      // Create missing goals for existing categories
+      await createMissingGoals(categoriesData || [], goalsData || []);
     } catch (error) {
-      console.error('Error fetching goals:', error);
+      console.error('Error fetching data:', error);
     } finally {
       setLoading(false);
     }
+  };
+
+  const createMissingGoals = async (categories: Category[], existingGoals: Goal[]) => {
+    const existingKeys = existingGoals.map(g => g.key);
+    const periods = ['daily', 'weekly', 'monthly'];
+    const missingGoals = [];
+
+    for (const category of categories) {
+      for (const period of periods) {
+        const key = `goal_${category.name}_${period}`;
+        if (!existingKeys.includes(key)) {
+          missingGoals.push({
+            key,
+            value: getDefaultValue(category.name, period),
+            description: `Meta ${period === 'daily' ? 'diária' : period === 'weekly' ? 'semanal' : 'mensal'} para ${category.display_name} (${category.unit})`
+          });
+        }
+      }
+    }
+
+    if (missingGoals.length > 0) {
+      const { error } = await supabase
+        .from('settings')
+        .insert(missingGoals);
+
+      if (error) {
+        console.error('Error creating missing goals:', error);
+      } else {
+        setGoals(prev => [...prev, ...missingGoals]);
+      }
+    }
+  };
+
+  const getDefaultValue = (categoryName: string, period: string) => {
+    const defaults = {
+      water: { daily: '350', weekly: '2500', monthly: '10000' },
+      energy: { daily: '35', weekly: '250', monthly: '1000' },
+      waste: { daily: '18', weekly: '125', monthly: '500' }
+    };
+    
+    return defaults[categoryName as keyof typeof defaults]?.[period as keyof typeof defaults.water] || '10';
   };
 
   const updateGoal = (key: string, value: string) => {
@@ -113,23 +183,20 @@ export default function GoalsSettings() {
     }
   };
 
-  const getGoalLabel = (key: string, categoryName: string) => {
-    const category = categories.find(c => c.name === categoryName);
-    return category ? `${category.display_name} (${category.unit})` : key;
-  };
-
   const getGoalsForPeriod = (period: string) => {
-    return goals.filter(goal => goal.key.endsWith(period));
+    return goals.filter(goal => goal.key.includes(`_${period}`));
   };
 
   const getCategoryFromGoalKey = (key: string) => {
-    // Remove 'goal_' prefix and period suffix
-    const withoutPrefix = key.replace('goal_', '');
-    const withoutSuffix = withoutPrefix.replace(/_daily|_weekly|_monthly/, '');
-    return withoutSuffix;
+    const parts = key.split('_');
+    if (parts.length >= 3) {
+      const categoryName = parts.slice(1, -1).join('_');
+      return categories.find(cat => cat.name === categoryName);
+    }
+    return null;
   };
 
-  if (loading || categoriesLoading) {
+  if (loading) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold text-gray-900">Configurar Metas</h1>
@@ -155,28 +222,24 @@ export default function GoalsSettings() {
           <TabsTrigger value="monthly">Mensais</TabsTrigger>
         </TabsList>
 
-        {Object.entries(goalPeriods).map(([period, periodInfo]) => (
+        {Object.entries(goalCategories).map(([period, category]) => (
           <TabsContent key={period} value={period}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {periodInfo.icon}
-                  {periodInfo.title}
+                  {category.icon}
+                  {category.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
                 <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                  {getGoalsForPeriod(periodInfo.suffix).map((goal) => {
-                    const categoryName = getCategoryFromGoalKey(goal.key);
-                    const category = categories.find(c => c.name === categoryName);
-                    
+                  {getGoalsForPeriod(period).map((goal) => {
+                    const categoryData = getCategoryFromGoalKey(goal.key);
                     return (
                       <div key={goal.key} className="space-y-2">
-                        <Label className="flex items-center gap-2 font-medium">
-                          {category && (
-                            <div className="w-3 h-3 rounded-full bg-primary/20 border border-primary/40" />
-                          )}
-                          {getGoalLabel(goal.key, categoryName)}
+                        <Label className="flex items-center gap-2">
+                          <Target className="w-4 h-4 text-primary" />
+                          {categoryData?.display_name || goal.key} ({categoryData?.unit || 'unidades'})
                         </Label>
                         <Input
                           type="number"
@@ -184,9 +247,8 @@ export default function GoalsSettings() {
                           onChange={(e) => updateGoal(goal.key, e.target.value)}
                           min="0"
                           step="1"
-                          className="text-base"
                         />
-                        <p className="text-xs text-muted-foreground">{goal.description}</p>
+                        <p className="text-xs text-gray-500">{goal.description}</p>
                       </div>
                     );
                   })}
@@ -200,8 +262,8 @@ export default function GoalsSettings() {
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="p-4">
           <p className="text-sm text-blue-800">
-            <strong>Dica:</strong> As metas são usadas para calcular o progresso no dashboard "Seu Impacto". 
-            Ajuste os valores de acordo com os objetivos da sua organização.
+            <strong>Dica:</strong> As metas são automaticamente criadas baseadas nas categorias de impacto cadastradas. 
+            Para adicionar novas categorias, vá em Configurações da Plataforma. Ajuste os valores de acordo com os objetivos da sua organização.
           </p>
         </CardContent>
       </Card>

@@ -257,10 +257,10 @@ const DashboardPage = () => {
                           {totalWater > 0 ? `${totalWater.toLocaleString('pt-BR')}L` : '0L'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalWater / goals.goal_water_monthly) * 100, 100)} className="h-3 bg-blue-100" />
-                      <p className="text-xs text-gray-500">
-                        {totalWater > 0 ? `${Math.min((totalWater / goals.goal_water_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_water_monthly.toLocaleString('pt-BR')}L)` : 'Nenhuma economia registrada'}
-                      </p>
+                       <Progress value={Math.min((totalWater / (goals['goal_water_monthly'] || 10000)) * 100, 100)} className="h-3 bg-blue-100" />
+                       <p className="text-xs text-gray-500">
+                         {totalWater > 0 ? `${Math.min((totalWater / (goals['goal_water_monthly'] || 10000)) * 100, 100).toFixed(1)}% da meta mensal (${(goals['goal_water_monthly'] || 10000).toLocaleString('pt-BR')}L)` : 'Nenhuma economia registrada'}
+                       </p>
                     </div>
 
                     {/* Energy Impact */}
@@ -274,10 +274,10 @@ const DashboardPage = () => {
                           {totalEnergy > 0 ? `${totalEnergy.toLocaleString('pt-BR')} kWh` : '0 kWh'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalEnergy / goals.goal_energy_monthly) * 100, 100)} className="h-3 bg-yellow-100" />
-                      <p className="text-xs text-gray-500">
-                        {totalEnergy > 0 ? `${Math.min((totalEnergy / goals.goal_energy_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_energy_monthly.toLocaleString('pt-BR')} kWh)` : 'Nenhuma economia registrada'}
-                      </p>
+                       <Progress value={Math.min((totalEnergy / (goals['goal_energy_monthly'] || 1000)) * 100, 100)} className="h-3 bg-yellow-100" />
+                       <p className="text-xs text-gray-500">
+                         {totalEnergy > 0 ? `${Math.min((totalEnergy / (goals['goal_energy_monthly'] || 1000)) * 100, 100).toFixed(1)}% da meta mensal (${(goals['goal_energy_monthly'] || 1000).toLocaleString('pt-BR')} kWh)` : 'Nenhuma economia registrada'}
+                       </p>
                     </div>
 
                     {/* CO2 Reduction */}
@@ -291,10 +291,10 @@ const DashboardPage = () => {
                           {totalCO2 > 0 ? `${totalCO2.toLocaleString('pt-BR')} kg` : '0 kg'}
                         </span>
                       </div>
-                      <Progress value={Math.min((totalCO2 / goals.goal_co2_monthly) * 100, 100)} className="h-3 bg-green-100" />
-                      <p className="text-xs text-gray-500">
-                        {totalCO2 > 0 ? `${Math.min((totalCO2 / goals.goal_co2_monthly) * 100, 100).toFixed(1)}% da meta mensal (${goals.goal_co2_monthly.toLocaleString('pt-BR')} kg)` : 'Nenhuma redução registrada'}
-                      </p>
+                       <Progress value={Math.min((totalCO2 / (goals['goal_waste_monthly'] || 500)) * 100, 100)} className="h-3 bg-green-100" />
+                       <p className="text-xs text-gray-500">
+                         {totalCO2 > 0 ? `${Math.min((totalCO2 / (goals['goal_waste_monthly'] || 500)) * 100, 100).toFixed(1)}% da meta mensal (${(goals['goal_waste_monthly'] || 500).toLocaleString('pt-BR')} kg)` : 'Nenhuma redução registrada'}
+                       </p>
                     </div>
                   </>
                 ) : (
