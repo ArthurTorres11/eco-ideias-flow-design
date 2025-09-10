@@ -19,6 +19,7 @@ import {
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIdeas } from "@/contexts/IdeasContext";
+import SustainabilityChat from "@/components/SustainabilityChat";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
@@ -116,9 +117,9 @@ const DashboardPage = () => {
           </div>
         </section>
 
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           {/* My Ideas Section */}
-          <section className="lg:col-span-2 space-y-6">
+          <section className="lg:col-span-8 space-y-6">
             <div className="flex items-center justify-between">
               <h2 className="text-2xl font-bold text-gray-800 flex items-center gap-2">
                 <Lightbulb className="w-6 h-6 text-green-600" />
@@ -183,7 +184,7 @@ const DashboardPage = () => {
           </section>
 
           {/* Personal Impact Panel */}
-          <section className="space-y-6">
+          <section className="lg:col-span-4 space-y-6">
             {/* Impact Metrics */}
             <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
               <CardHeader>
@@ -299,6 +300,11 @@ const DashboardPage = () => {
                 </div>
               </CardContent>
             </Card>
+            
+            {/* AI Assistant */}
+            <div className="mt-6">
+              <SustainabilityChat />
+            </div>
           </section>
         </div>
       </main>
