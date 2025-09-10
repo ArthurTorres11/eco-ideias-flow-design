@@ -16,6 +16,7 @@ import ManageUsers from "./pages/admin/ManageUsers";
 import UserForm from "./pages/admin/UserForm";
 import Settings from "./pages/admin/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
+import AdminRoute from "./components/AdminRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { IdeasProvider } from "./contexts/IdeasContext";
 
@@ -59,7 +60,9 @@ const App = () => (
               {/* Admin Routes */}
               <Route path="/admin" element={
                 <ProtectedRoute>
-                  <AdminLayout />
+                  <AdminRoute>
+                    <AdminLayout />
+                  </AdminRoute>
                 </ProtectedRoute>
               }>
                 <Route index element={<AdminDashboard />} />

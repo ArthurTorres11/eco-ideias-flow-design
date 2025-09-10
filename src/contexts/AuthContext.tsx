@@ -99,6 +99,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
         .maybeSingle();
 
       if (!error && profile) {
+        console.log('Profile loaded:', profile); // Debug log
         // Update with actual profile data
         setUser({
           id: supabaseUser.id,
