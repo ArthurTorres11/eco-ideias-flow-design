@@ -24,7 +24,7 @@ import { Plus } from "lucide-react";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { user, logout } = useAuth();
+  const { user } = useAuth();
   const { getUserIdeas } = useIdeas();
 
   // Get user's ideas
@@ -105,28 +105,16 @@ const DashboardPage = () => {
             </p>
           </div>
           
-          <div className="flex justify-center items-center gap-4">
-            <div className="relative">
-              <Button
-                onClick={() => navigate("/new-idea")}
-                className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xl px-12 py-6 h-auto rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
-                size="lg"
-              >
-                <Lightbulb className="w-6 h-6 mr-3" />
-                + Submeter Nova Ideia
-              </Button>
-              <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
-            </div>
+          <div className="relative">
             <Button
-              onClick={async () => {
-                await logout();
-                navigate("/");
-              }}
-              variant="outline"
-              className="text-red-600 border-red-600 hover:bg-red-50"
+              onClick={() => navigate("/new-idea")}
+              className="bg-gradient-to-r from-green-600 to-green-700 hover:from-green-700 hover:to-green-800 text-white text-xl px-12 py-6 h-auto rounded-xl shadow-lg hover:shadow-xl transform hover:scale-105 transition-all duration-200"
+              size="lg"
             >
-              Sair
+              <Lightbulb className="w-6 h-6 mr-3" />
+              + Submeter Nova Ideia
             </Button>
+            <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
           </div>
         </section>
 
