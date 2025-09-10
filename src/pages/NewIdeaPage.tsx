@@ -11,11 +11,13 @@ import { toast } from "@/hooks/use-toast";
 import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIdeas } from "@/contexts/IdeasContext";
+import { useCategories } from "@/hooks/useCategories";
 
 const NewIdeaPage = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
   const { addIdea } = useIdeas();
+  const { categories } = useCategories();
   const [formData, setFormData] = useState({
     title: "",
     description: "",
@@ -133,12 +135,11 @@ const NewIdeaPage = () => {
                     <SelectValue placeholder="Selecione uma categoria..." />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="water">Conservação de Água</SelectItem>
-                    <SelectItem value="energy">Eficiência Energética</SelectItem>
-                    <SelectItem value="waste">Redução de Resíduos</SelectItem>
-                    <SelectItem value="transport">Transporte Sustentável</SelectItem>
-                    <SelectItem value="materials">Materiais Sustentáveis</SelectItem>
-                    <SelectItem value="biodiversity">Biodiversidade</SelectItem>
+                    {categories.map((category) => (
+                      <SelectItem key={category.id} value={category.name}>
+                        {category.display_name}
+                      </SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
@@ -167,10 +168,11 @@ const NewIdeaPage = () => {
                       <SelectValue placeholder="Selecione..." />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="liters">Litros</SelectItem>
-                      <SelectItem value="kwh">kWh</SelectItem>
-                      <SelectItem value="kg">Quilogramas</SelectItem>
-                      <SelectItem value="tons">Toneladas</SelectItem>
+                      {categories.map((category) => (
+                        <SelectItem key={category.id} value={category.unit}>
+                          {category.unit}
+                        </SelectItem>
+                      ))}
                       <SelectItem value="percent">Porcentagem (%)</SelectItem>
                       <SelectItem value="units">Unidades</SelectItem>
                     </SelectContent>

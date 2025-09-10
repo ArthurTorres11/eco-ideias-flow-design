@@ -6,7 +6,8 @@ import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { supabase } from '@/integrations/supabase/client';
 import { useToast } from '@/hooks/use-toast';
-import { Target, Save, Droplet, Bolt, Leaf } from 'lucide-react';
+import { useCategories } from '@/hooks/useCategories';
+import { Target, Save } from 'lucide-react';
 
 interface Goal {
   key: string;
@@ -19,29 +20,24 @@ export default function GoalsSettings() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { toast } = useToast();
+  const { categories, loading: categoriesLoading } = useCategories();
 
-  const goalCategories = {
+  const goalPeriods = {
     daily: {
       title: 'Metas Diárias',
       icon: <Target className="w-5 h-5" />,
-      goals: ['goal_water_daily', 'goal_energy_daily', 'goal_co2_daily']
+      suffix: '_daily'
     },
     weekly: {
       title: 'Metas Semanais', 
       icon: <Target className="w-5 h-5" />,
-      goals: ['goal_water_weekly', 'goal_energy_weekly', 'goal_co2_weekly']
+      suffix: '_weekly'
     },
     monthly: {
       title: 'Metas Mensais',
       icon: <Target className="w-5 h-5" />,
-      goals: ['goal_water_monthly', 'goal_energy_monthly', 'goal_co2_monthly']
+      suffix: '_monthly'
     }
-  };
-
-  const goalIcons = {
-    water: <Droplet className="w-4 h-4 text-blue-500" />,
-    energy: <Bolt className="w-4 h-4 text-yellow-500" />,
-    co2: <Leaf className="w-4 h-4 text-green-500" />
   };
 
   useEffect(() => {
@@ -117,25 +113,23 @@ export default function GoalsSettings() {
     }
   };
 
-  const getGoalLabel = (key: string) => {
-    if (key.includes('water')) return 'Água (L)';
-    if (key.includes('energy')) return 'Energia (kWh)';
-    if (key.includes('co2')) return 'CO₂ (kg)';
-    return key;
+  const getGoalLabel = (key: string, categoryName: string) => {
+    const category = categories.find(c => c.name === categoryName);
+    return category ? `${category.display_name} (${category.unit})` : key;
   };
 
-  const getGoalIcon = (key: string) => {
-    if (key.includes('water')) return goalIcons.water;
-    if (key.includes('energy')) return goalIcons.energy;
-    if (key.includes('co2')) return goalIcons.co2;
-    return null;
+  const getGoalsForPeriod = (period: string) => {
+    return goals.filter(goal => goal.key.endsWith(period));
   };
 
-  const getGoalsForCategory = (categoryKeys: string[]) => {
-    return goals.filter(goal => categoryKeys.includes(goal.key));
+  const getCategoryFromGoalKey = (key: string) => {
+    // Remove 'goal_' prefix and period suffix
+    const withoutPrefix = key.replace('goal_', '');
+    const withoutSuffix = withoutPrefix.replace(/_daily|_weekly|_monthly/, '');
+    return withoutSuffix;
   };
 
-  if (loading) {
+  if (loading || categoriesLoading) {
     return (
       <div className="space-y-6">
         <h1 className="text-3xl font-bold text-gray-900">Configurar Metas</h1>
@@ -161,33 +155,41 @@ export default function GoalsSettings() {
           <TabsTrigger value="monthly">Mensais</TabsTrigger>
         </TabsList>
 
-        {Object.entries(goalCategories).map(([period, category]) => (
+        {Object.entries(goalPeriods).map(([period, periodInfo]) => (
           <TabsContent key={period} value={period}>
             <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
-                  {category.icon}
-                  {category.title}
+                  {periodInfo.icon}
+                  {periodInfo.title}
                 </CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-                  {getGoalsForCategory(category.goals).map((goal) => (
-                    <div key={goal.key} className="space-y-2">
-                      <Label className="flex items-center gap-2">
-                        {getGoalIcon(goal.key)}
-                        {getGoalLabel(goal.key)}
-                      </Label>
-                      <Input
-                        type="number"
-                        value={goal.value}
-                        onChange={(e) => updateGoal(goal.key, e.target.value)}
-                        min="0"
-                        step="1"
-                      />
-                      <p className="text-xs text-gray-500">{goal.description}</p>
-                    </div>
-                  ))}
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+                  {getGoalsForPeriod(periodInfo.suffix).map((goal) => {
+                    const categoryName = getCategoryFromGoalKey(goal.key);
+                    const category = categories.find(c => c.name === categoryName);
+                    
+                    return (
+                      <div key={goal.key} className="space-y-2">
+                        <Label className="flex items-center gap-2 font-medium">
+                          {category && (
+                            <div className="w-3 h-3 rounded-full bg-primary/20 border border-primary/40" />
+                          )}
+                          {getGoalLabel(goal.key, categoryName)}
+                        </Label>
+                        <Input
+                          type="number"
+                          value={goal.value}
+                          onChange={(e) => updateGoal(goal.key, e.target.value)}
+                          min="0"
+                          step="1"
+                          className="text-base"
+                        />
+                        <p className="text-xs text-muted-foreground">{goal.description}</p>
+                      </div>
+                    );
+                  })}
                 </div>
               </CardContent>
             </Card>
