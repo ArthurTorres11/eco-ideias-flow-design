@@ -39,12 +39,21 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
+    let mounted = true;
+
     // Set up auth state listener
     const { data: { subscription } } = supabase.auth.onAuthStateChange(
-      async (event, session) => {
+      (event, session) => {
+        if (!mounted) return;
+        
         setSession(session);
         if (session?.user) {
-          await fetchUserProfile(session.user);
+          // Defer profile fetching to avoid blocking the main thread
+          setTimeout(() => {
+            if (mounted) {
+              fetchUserProfile(session.user);
+            }
+          }, 0);
         } else {
           setUser(null);
         }
@@ -54,6 +63,8 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
 
     // Check for existing session
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
+      
       setSession(session);
       if (session?.user) {
         fetchUserProfile(session.user);
@@ -62,56 +73,61 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
       }
     });
 
-    return () => subscription.unsubscribe();
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
   }, []);
 
   const fetchUserProfile = async (supabaseUser: SupabaseUser) => {
     try {
+      // Create fallback user immediately for faster UI response
+      const fallbackUser = {
+        id: supabaseUser.id,
+        name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
+        email: supabaseUser.email || '',
+        role: 'user' as const
+      };
+      
+      setUser(fallbackUser);
+
+      // Try to fetch actual profile data in the background
       const { data: profile, error } = await supabase
         .from('profiles')
         .select('*')
         .eq('user_id', supabaseUser.id)
         .maybeSingle();
 
-      if (error && error.code !== 'PGRST116') {
-        console.error('Error fetching profile:', error);
-      }
-
-      if (profile) {
+      if (!error && profile) {
+        // Update with actual profile data
         setUser({
           id: supabaseUser.id,
           name: profile.name,
           email: profile.email,
           role: profile.role as 'user' | 'admin'
         });
-      } else {
-        // No profile found or error, create default user from auth data
-        const defaultUser = {
-          id: supabaseUser.id,
-          name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
-          email: supabaseUser.email || '',
-          role: 'user' as const
-        };
-        
-        setUser(defaultUser);
-        
-        // Try to create profile in background
-        try {
-          await supabase
-            .from('profiles')
-            .insert({
-              user_id: supabaseUser.id,
-              name: defaultUser.name,
-              email: defaultUser.email,
-              role: defaultUser.role
-            });
-        } catch (insertError) {
-          console.log('Profile creation failed (expected if exists):', insertError);
-        }
+      } else if (error && error.code !== 'PGRST116') {
+        console.error('Error fetching profile:', error);
+        // Try to create profile silently in background
+        setTimeout(async () => {
+          try {
+            await supabase
+              .from('profiles')
+              .upsert({
+                user_id: supabaseUser.id,
+                name: fallbackUser.name,
+                email: fallbackUser.email,
+                role: fallbackUser.role
+              });
+            console.log('Profile created/updated successfully');
+          } catch (err) {
+            console.log('Profile creation failed silently:', err);
+          }
+        }, 100);
       }
     } catch (error) {
       console.error('Error in fetchUserProfile:', error);
-      // Always set user data even on error
+      // Always ensure user is set even on error
       setUser({
         id: supabaseUser.id,
         name: supabaseUser.user_metadata?.name || supabaseUser.email?.split('@')[0] || 'Usuário',
