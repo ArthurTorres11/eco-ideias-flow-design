@@ -40,5 +40,11 @@ export const useGoals = () => {
     }
   };
 
-  return { goals, loading, refetch: fetchGoals };
+  // Refresh goals function that can be called externally
+  const refreshGoals = () => {
+    setLoading(true);
+    fetchGoals();
+  };
+
+  return { goals, loading, refetch: fetchGoals, refresh: refreshGoals };
 };

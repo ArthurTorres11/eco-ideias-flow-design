@@ -55,7 +55,7 @@ export default function GoalsSettings() {
 
   const fetchData = async () => {
     try {
-      // Fetch categories
+      // Fetch categories first
       const { data: categoriesData, error: categoriesError } = await supabase
         .from('categories')
         .select('*')
@@ -92,8 +92,8 @@ export default function GoalsSettings() {
 
       setGoals(goalsData || []);
 
-      // Create missing goals for existing categories
-      await createMissingGoals(categoriesData || [], goalsData || []);
+      // Sync categories with goals - ensure all categories with has_goals=true have complete goals
+      await syncCategoriesWithGoals(categoriesData || [], goalsData || []);
     } catch (error) {
       console.error('Error fetching data:', error);
     } finally {
@@ -101,14 +101,13 @@ export default function GoalsSettings() {
     }
   };
 
-  const createMissingGoals = async (categories: Category[], existingGoals: Goal[]) => {
-    const existingKeys = existingGoals.map(g => g.key);
+  const syncCategoriesWithGoals = async (categories: Category[], existingGoals: Goal[]) => {
     const periods = ['daily', 'weekly', 'monthly'];
+    const categoriesWithGoals = categories.filter(cat => cat.has_goals);
+    const existingKeys = existingGoals.map(g => g.key);
     const missingGoals = [];
 
-    // Only create goals for categories that have has_goals = true
-    const categoriesWithGoals = categories.filter(cat => cat.has_goals);
-
+    // Create missing goals for categories that should have goals
     for (const category of categoriesWithGoals) {
       for (const period of periods) {
         const key = `goal_${category.name}_${period}`;
@@ -122,6 +121,14 @@ export default function GoalsSettings() {
       }
     }
 
+    // Remove goals for categories that no longer should have goals
+    const categoriesToRemove = categories.filter(cat => !cat.has_goals).map(cat => cat.name);
+    const goalsToDelete = existingGoals.filter(goal => {
+      const categoryName = goal.key.split('_').slice(1, -1).join('_');
+      return categoriesToRemove.includes(categoryName);
+    });
+
+    // Insert missing goals
     if (missingGoals.length > 0) {
       const { error } = await supabase
         .from('settings')
@@ -130,9 +137,26 @@ export default function GoalsSettings() {
       if (error) {
         console.error('Error creating missing goals:', error);
       } else {
-        setGoals(prev => [...prev, ...missingGoals]);
+        setGoals(prev => [...prev.filter(g => !goalsToDelete.some(d => d.key === g.key)), ...missingGoals]);
       }
     }
+
+    // Delete unnecessary goals
+    if (goalsToDelete.length > 0) {
+      for (const goal of goalsToDelete) {
+        await supabase
+          .from('settings')
+          .delete()
+          .eq('key', goal.key);
+      }
+      
+      setGoals(prev => prev.filter(g => !goalsToDelete.some(d => d.key === g.key)));
+    }
+  };
+
+  const createMissingGoals = async (categories: Category[], existingGoals: Goal[]) => {
+    // This function is now handled by syncCategoriesWithGoals
+    return;
   };
 
   const getDefaultValue = (categoryName: string, period: string) => {
@@ -204,32 +228,55 @@ export default function GoalsSettings() {
         cat.id === categoryId ? { ...cat, has_goals: hasGoals } : cat
       ));
 
-      // If disabling goals, remove related goal settings
-      if (!hasGoals) {
-        const categoryName = categories.find(cat => cat.id === categoryId)?.name;
-        if (categoryName) {
-          const goalsToDelete = goals.filter(goal => goal.key.includes(`_${categoryName}_`));
-          
-          for (const goal of goalsToDelete) {
-            await supabase
-              .from('settings')
-              .delete()
-              .eq('key', goal.key);
+      const category = categories.find(cat => cat.id === categoryId);
+      const periods = ['daily', 'weekly', 'monthly'];
+
+      if (!hasGoals && category) {
+        // Remove all goals for this category
+        const goalsToDelete = goals.filter(goal => goal.key.includes(`_${category.name}_`));
+        
+        for (const goal of goalsToDelete) {
+          await supabase
+            .from('settings')
+            .delete()
+            .eq('key', goal.key);
+        }
+
+        setGoals(prev => prev.filter(goal => !goal.key.includes(`_${category.name}_`)));
+      } else if (hasGoals && category) {
+        // Create all missing goals for this category (daily, weekly, monthly)
+        const missingGoals = [];
+        const existingKeys = goals.map(g => g.key);
+
+        for (const period of periods) {
+          const key = `goal_${category.name}_${period}`;
+          if (!existingKeys.includes(key)) {
+            missingGoals.push({
+              key,
+              value: getDefaultValue(category.name, period),
+              description: `Meta ${period === 'daily' ? 'diária' : period === 'weekly' ? 'semanal' : 'mensal'} para ${category.display_name} (${category.unit})`
+            });
+          }
+        }
+
+        if (missingGoals.length > 0) {
+          const { error: insertError } = await supabase
+            .from('settings')
+            .insert(missingGoals);
+
+          if (insertError) {
+            throw insertError;
           }
 
-          setGoals(prev => prev.filter(goal => !goal.key.includes(`_${categoryName}_`)));
-        }
-      } else {
-        // If enabling goals, create missing goals for this category
-        const category = categories.find(cat => cat.id === categoryId);
-        if (category) {
-          await createMissingGoals([category], goals);
+          setGoals(prev => [...prev, ...missingGoals]);
         }
       }
 
       toast({
         title: "Sucesso",
-        description: hasGoals ? "Metas ativadas para esta categoria" : "Metas desativadas para esta categoria",
+        description: hasGoals ? 
+          "Metas ativadas para esta categoria (diárias, semanais e mensais)" : 
+          "Metas desativadas para esta categoria",
         variant: "default"
       });
     } catch (error) {
@@ -272,9 +319,13 @@ export default function GoalsSettings() {
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <h1 className="text-3xl font-bold text-gray-900">Configurar Metas</h1>
-        <Button onClick={saveGoals} disabled={saving}>
+        <Button onClick={saveGoals} disabled={saving} className="mr-3">
           <Save className="w-4 h-4 mr-2" />
           {saving ? 'Salvando...' : 'Salvar Metas'}
+        </Button>
+        <Button onClick={fetchData} variant="outline" disabled={loading}>
+          <Target className="w-4 h-4 mr-2" />
+          Atualizar Categorias
         </Button>
       </div>
 
@@ -297,18 +348,25 @@ export default function GoalsSettings() {
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <p className="text-sm text-gray-600 mb-4">
+              <div className="flex items-center justify-between mb-4">
+                <p className="text-sm text-gray-600">
                   Selecione quais categorias de impacto devem ter metas configuráveis:
                 </p>
+                <Button onClick={fetchData} variant="outline" size="sm" disabled={loading}>
+                  <Target className="w-4 h-4 mr-2" />
+                  {loading ? 'Carregando...' : 'Detectar Novas Categorias'}
+                </Button>
+              </div>
                 
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  {categories.map((category) => (
-                    <div key={category.id} className="flex items-center justify-between p-4 border rounded-lg">
+                  {categories.length > 0 ? categories.map((category) => (
+                    <div key={category.id} className="flex items-center justify-between p-4 border rounded-lg hover:bg-gray-50 transition-colors">
                       <div className="flex items-center gap-3">
                         <Target className="w-5 h-5 text-primary" />
                         <div>
                           <h3 className="font-medium">{category.display_name}</h3>
                           <p className="text-sm text-gray-500">Unidade: {category.unit}</p>
+                          <p className="text-xs text-gray-400">{category.description}</p>
                         </div>
                       </div>
                       
@@ -318,13 +376,29 @@ export default function GoalsSettings() {
                           onCheckedChange={(checked) => toggleCategoryGoals(category.id, checked)}
                         />
                         {category.has_goals ? (
-                          <Check className="w-4 h-4 text-green-500" />
+                          <div className="flex items-center gap-1">
+                            <Check className="w-4 h-4 text-green-500" />
+                            <span className="text-xs text-green-600 font-medium">Ativa</span>
+                          </div>
                         ) : (
-                          <X className="w-4 h-4 text-gray-400" />
+                          <div className="flex items-center gap-1">
+                            <X className="w-4 h-4 text-gray-400" />
+                            <span className="text-xs text-gray-500">Inativa</span>
+                          </div>
                         )}
                       </div>
                     </div>
-                  ))}
+                  )) : (
+                    <div className="col-span-2 text-center py-8">
+                      <Target className="w-12 h-12 text-gray-400 mx-auto mb-4" />
+                      <h3 className="text-lg font-medium text-gray-600 mb-2">Nenhuma categoria encontrada</h3>
+                      <p className="text-gray-500 mb-4">Adicione categorias na página de Configurações da Plataforma primeiro.</p>
+                      <Button onClick={fetchData} variant="outline">
+                        <Target className="w-4 h-4 mr-2" />
+                        Verificar Novamente
+                      </Button>
+                    </div>
+                  )}
                 </div>
               </div>
             </CardContent>
@@ -380,8 +454,9 @@ export default function GoalsSettings() {
       <Card className="bg-blue-50 border-blue-200">
         <CardContent className="p-4">
           <p className="text-sm text-blue-800">
-            <strong>Dica:</strong> Primeiro selecione quais categorias devem ter metas na aba "Categorias", 
-            depois configure os valores nas abas respectivas. As metas são usadas para calcular o progresso no dashboard "Seu Impacto".
+            <strong>Dica:</strong> O sistema sincroniza automaticamente as metas. Quando você ativa uma categoria, 
+            metas diárias, semanais e mensais são criadas automaticamente. Novas categorias adicionadas no sistema 
+            aparecerão aqui - use o botão "Detectar Novas Categorias" para atualizar a lista.
           </p>
         </CardContent>
       </Card>
