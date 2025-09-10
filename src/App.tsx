@@ -17,6 +17,7 @@ import UserForm from "./pages/admin/UserForm";
 import Settings from "./pages/admin/Settings";
 import ProtectedRoute from "./components/ProtectedRoute";
 import AdminRoute from "./components/AdminRoute";
+import UserRoute from "./components/UserRoute";
 import { AuthProvider } from "./contexts/AuthContext";
 import { IdeasProvider } from "./contexts/IdeasContext";
 
@@ -48,12 +49,16 @@ const App = () => (
               <Route path="/forgot-password" element={<ForgotPasswordPage />} />
               <Route path="/dashboard" element={
                 <ProtectedRoute>
-                  <DashboardPage />
+                  <UserRoute>
+                    <DashboardPage />
+                  </UserRoute>
                 </ProtectedRoute>
               } />
               <Route path="/new-idea" element={
                 <ProtectedRoute>
-                  <NewIdeaPage />
+                  <UserRoute>
+                    <NewIdeaPage />
+                  </UserRoute>
                 </ProtectedRoute>
               } />
               

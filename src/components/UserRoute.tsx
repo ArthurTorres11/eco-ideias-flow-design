@@ -1,11 +1,11 @@
 import { useAuth } from "@/contexts/AuthContext";
 import { Navigate, useLocation } from "react-router-dom";
 
-interface AdminRouteProps {
+interface UserRouteProps {
   children: React.ReactNode;
 }
 
-const AdminRoute = ({ children }: AdminRouteProps) => {
+const UserRoute = ({ children }: UserRouteProps) => {
   const { user, loading, isAdmin } = useAuth();
   const location = useLocation();
 
@@ -22,17 +22,13 @@ const AdminRoute = ({ children }: AdminRouteProps) => {
     return <Navigate to="/" state={{ from: location }} replace />;
   }
 
-  console.log('AdminRoute check:', { user, isAdminResult: isAdmin() });
-
-  if (!isAdmin()) {
-    console.log('Access denied - redirecting to dashboard');
-    // Redirect non-admin users to dashboard
-    return <Navigate to="/dashboard" replace />;
+  // Admin users should not access user dashboard - redirect to admin panel
+  if (isAdmin()) {
+    console.log('Admin trying to access user dashboard - redirecting to admin');
+    return <Navigate to="/admin" replace />;
   }
-
-  console.log('Admin access granted');
 
   return <>{children}</>;
 };
 
-export default AdminRoute;
+export default UserRoute;

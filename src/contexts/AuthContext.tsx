@@ -189,6 +189,7 @@ export const AuthProvider = ({ children }: AuthProviderProps) => {
   };
 
   const isAdmin = () => {
+    console.log('isAdmin check:', { user, role: user?.role, isAdmin: user?.role === 'admin' });
     return user?.role === 'admin';
   };
 
