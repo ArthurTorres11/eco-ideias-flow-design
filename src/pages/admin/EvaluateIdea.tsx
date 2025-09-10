@@ -1,5 +1,4 @@
-
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useParams } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
@@ -12,16 +11,8 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Star } from "lucide-react";
-
-const ideaDetails = {
-  id: 1,
-  titulo: "Sistema de captação de água da chuva",
-  autor: "Maria Silva",
-  descricao: "Proposta para implementar um sistema de captação e armazenamento de água da chuva nos telhados dos prédios da empresa. O sistema incluiria calhas especiais, filtros e reservatórios para coleta e tratamento básico da água, que seria utilizada para irrigação das áreas verdes e limpeza geral. Estimativa de economia de 30% no consumo de água potável.",
-  categoria: "Água",
-  dataSubmissao: "2024-01-15",
-  anexos: ["projeto-captacao.pdf", "orcamento-inicial.xlsx"]
-};
+import { useIdeas } from "@/contexts/IdeasContext";
+import { toast } from "@/hooks/use-toast";
 
 const StarRating = ({ rating, onRatingChange }: { rating: number; onRatingChange: (rating: number) => void }) => {
   return (
@@ -48,124 +39,144 @@ const StarRating = ({ rating, onRatingChange }: { rating: number; onRatingChange
 
 export default function EvaluateIdea() {
   const { ideaId } = useParams();
-  const [impactoAmbiental, setImpactoAmbiental] = useState(0);
-  const [viabilidadeTecnica, setViabilidadeTecnica] = useState(0);
-  const [custoBeneficio, setCustoBeneficio] = useState(0);
+  const { ideas, updateIdeaStatus } = useIdeas();
+  const [idea, setIdea] = useState<any>(null);
+  const [rating, setRating] = useState(0);
+  const [comments, setComments] = useState("");
   const [status, setStatus] = useState("");
-  const [feedback, setFeedback] = useState("");
 
-  const handleSaveEvaluation = () => {
-    console.log("Saving evaluation:", {
-      ideaId,
-      impactoAmbiental,
-      viabilidadeTecnica,
-      custoBeneficio,
-      status,
-      feedback
-    });
-    // Here you would typically save to your backend
+  useEffect(() => {
+    // Buscar a ideia específica pelos dados reais
+    const foundIdea = ideas.find(i => i.id === ideaId);
+    if (foundIdea) {
+      setIdea(foundIdea);
+      setStatus(foundIdea.status);
+    }
+  }, [ideaId, ideas]);
+
+  const handleSaveEvaluation = async () => {
+    if (!status) {
+      toast({
+        title: "Erro",
+        description: "Por favor, selecione um status para a ideia.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const result = await updateIdeaStatus(ideaId!, status as any);
+    
+    if (result.success) {
+      toast({
+        title: "Sucesso!",
+        description: "Avaliação salva com sucesso.",
+      });
+    } else {
+      toast({
+        title: "Erro",
+        description: result.error || "Erro ao salvar avaliação.",
+        variant: "destructive",
+      });
+    }
   };
+
+  if (!idea) {
+    return (
+      <div className="p-6">
+        <p>Carregando ideia...</p>
+      </div>
+    );
+  }
 
   return (
     <div className="space-y-6">
       <h1 className="text-3xl font-bold text-gray-900">Avaliação de Ideia</h1>
       
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        {/* Left Column - Idea Details */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Detalhes da Ideia</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Título</h3>
-              <p className="text-gray-700">{ideaDetails.titulo}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Autor</h3>
-              <p className="text-gray-700">{ideaDetails.autor}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Descrição Completa</h3>
-              <p className="text-gray-700 leading-relaxed">{ideaDetails.descricao}</p>
-            </div>
-            
-            <div>
-              <h3 className="font-semibold text-gray-900 mb-2">Anexos</h3>
-              <div className="space-y-2">
-                {ideaDetails.anexos.map((anexo, index) => (
-                  <div key={index} className="flex items-center gap-2">
-                    <span className="text-blue-600 hover:underline cursor-pointer">
-                      📎 {anexo}
-                    </span>
-                  </div>
-                ))}
-              </div>
-            </div>
-          </CardContent>
-        </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle className="text-2xl font-bold text-gray-900">
+            Avaliar Ideia: {idea.title}
+          </CardTitle>
+          <p className="text-gray-600">Autor: {idea.author}</p>
+        </CardHeader>
+        
+        <CardContent className="space-y-6">
+          <div>
+            <h3 className="text-lg font-semibold mb-2">Descrição</h3>
+            <p className="text-gray-700 leading-relaxed">{idea.description}</p>
+          </div>
 
-        {/* Right Column - Evaluation Scorecard */}
-        <Card>
-          <CardHeader>
-            <CardTitle>Scorecard de Avaliação</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-6">
+          <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+            <div>
+              <h4 className="font-medium mb-1">Categoria</h4>
+              <p className="text-gray-600">{idea.category}</p>
+            </div>
+            <div>
+              <h4 className="font-medium mb-1">Data de Submissão</h4>
+              <p className="text-gray-600">{idea.created_at}</p>
+            </div>
+            <div>
+              <h4 className="font-medium mb-1">Impacto Estimado</h4>
+              <p className="text-gray-600">{idea.impact}</p>
+            </div>
+          </div>
+
+          {idea.file_url && (
+            <div>
+              <h4 className="font-medium mb-2">Anexo</h4>
+              <a 
+                href={idea.file_url} 
+                target="_blank" 
+                rel="noopener noreferrer"
+                className="text-blue-600 hover:text-blue-800 underline"
+              >
+                {idea.file_name || 'Arquivo anexado'}
+              </a>
+            </div>
+          )}
+
+          <div className="border-t pt-6">
+            <h3 className="text-lg font-semibold mb-4">Avaliação</h3>
+            
             <div className="space-y-4">
-              <div className="flex items-center justify-between">
-                <label className="font-medium text-gray-900">Impacto Ambiental</label>
-                <StarRating rating={impactoAmbiental} onRatingChange={setImpactoAmbiental} />
+              <div>
+                <label className="block font-medium text-gray-900 mb-2">
+                  Status da Ideia
+                </label>
+                <Select value={status} onValueChange={setStatus}>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Selecione o status" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="Aprovada">Aprovar</SelectItem>
+                    <SelectItem value="Reprovada">Reprovar</SelectItem>
+                    <SelectItem value="Em Análise">Manter em Análise</SelectItem>
+                  </SelectContent>
+                </Select>
               </div>
-              
-              <div className="flex items-center justify-between">
-                <label className="font-medium text-gray-900">Viabilidade Técnica</label>
-                <StarRating rating={viabilidadeTecnica} onRatingChange={setViabilidadeTecnica} />
+
+              <div>
+                <label className="block font-medium text-gray-900 mb-2">
+                  Comentários
+                </label>
+                <Textarea
+                  value={comments}
+                  onChange={(e) => setComments(e.target.value)}
+                  placeholder="Adicione seus comentários sobre a avaliação..."
+                  rows={4}
+                />
               </div>
-              
-              <div className="flex items-center justify-between">
-                <label className="font-medium text-gray-900">Custo-Benefício</label>
-                <StarRating rating={custoBeneficio} onRatingChange={setCustoBeneficio} />
-              </div>
-            </div>
 
-            <div>
-              <label className="block font-medium text-gray-900 mb-2">
-                Status da Ideia
-              </label>
-              <Select value={status} onValueChange={setStatus}>
-                <SelectTrigger>
-                  <SelectValue placeholder="Selecione o status" />
-                </SelectTrigger>
-                <SelectContent>
-                  <SelectItem value="aprovar">Aprovar</SelectItem>
-                  <SelectItem value="reprovar">Reprovar</SelectItem>
-                </SelectContent>
-              </Select>
+              <Button
+                onClick={handleSaveEvaluation}
+                className="w-full bg-green-600 hover:bg-green-700"
+              >
+                Salvar Avaliação
+              </Button>
             </div>
-
-            <div>
-              <label className="block font-medium text-gray-900 mb-2">
-                Feedback para o Colaborador
-              </label>
-              <Textarea
-                value={feedback}
-                onChange={(e) => setFeedback(e.target.value)}
-                placeholder="Escreva seu feedback detalhado aqui..."
-                rows={4}
-              />
-            </div>
-
-            <Button
-              onClick={handleSaveEvaluation}
-              className="w-full bg-green-600 hover:bg-green-700"
-            >
-              Salvar Avaliação
-            </Button>
-          </CardContent>
-        </Card>
-      </div>
+          </div>
+        </CardContent>
+      </Card>
     </div>
   );
 }

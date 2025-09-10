@@ -1,72 +1,65 @@
-
+import { useState, useEffect } from "react";
 import { useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Pencil, Trash2 } from "lucide-react";
-
-const usersData = [
-  {
-    id: 1,
-    nome: "Maria Silva",
-    email: "maria.silva@empresa.com",
-    cpf: "123.456.789-00",
-    perfil: "ROLE_COLABORADOR"
-  },
-  {
-    id: 2,
-    nome: "João Santos",
-    email: "joao.santos@empresa.com",
-    cpf: "987.654.321-00",
-    perfil: "ROLE_GESTOR"
-  },
-  {
-    id: 3,
-    nome: "Ana Costa",
-    email: "ana.costa@empresa.com",
-    cpf: "456.789.123-00",
-    perfil: "ROLE_COLABORADOR"
-  },
-  {
-    id: 4,
-    nome: "Carlos Lima",
-    email: "carlos.lima@empresa.com",
-    cpf: "789.123.456-00",
-    perfil: "ROLE_COLABORADOR"
-  },
-];
+import { supabase } from "@/integrations/supabase/client";
 
 export default function ManageUsers() {
   const navigate = useNavigate();
+  const [users, setUsers] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    fetchUsers();
+  }, []);
+
+  const fetchUsers = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('name');
+
+      if (error) {
+        console.error('Error fetching users:', error);
+        return;
+      }
+
+      setUsers(data || []);
+    } catch (error) {
+      console.error('Error:', error);
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const handleNewUser = () => {
     navigate("/admin/users/new");
   };
 
-  const handleEditUser = (userId: number) => {
+  const handleEditUser = (userId: string) => {
     navigate(`/admin/users/${userId}/edit`);
   };
 
-  const handleDeleteUser = (userId: number) => {
-    console.log("Delete user:", userId);
-    // Here you would typically show a confirmation dialog and delete from backend
+  const handleDeleteUser = (userId: string) => {
+    console.log("Deletar usuário:", userId);
+    // Implementar lógica de exclusão
   };
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <h1 className="text-3xl font-bold text-gray-900">Gerenciamento de Usuários</h1>
-        <Button
-          onClick={handleNewUser}
-          className="bg-green-600 hover:bg-green-700"
-        >
-          + Novo Colaborador
+      <div className="flex justify-between items-center">
+        <h1 className="text-3xl font-bold text-gray-900">Gerenciar Usuários</h1>
+        <Button onClick={handleNewUser} className="bg-green-600 hover:bg-green-700">
+          Novo Usuário
         </Button>
       </div>
-      
+
       <Card>
         <CardHeader>
-          <CardTitle>Todos os Usuários</CardTitle>
+          <CardTitle>Lista de Usuários</CardTitle>
         </CardHeader>
         <CardContent>
           <Table>
@@ -81,42 +74,56 @@ export default function ManageUsers() {
               </TableRow>
             </TableHeader>
             <TableBody>
-              {usersData.map((user) => (
-                <TableRow key={user.id}>
-                  <TableCell>{user.id}</TableCell>
-                  <TableCell className="font-medium">{user.nome}</TableCell>
-                  <TableCell>{user.email}</TableCell>
-                  <TableCell>{user.cpf}</TableCell>
-                  <TableCell>
-                    <span className={`px-2 py-1 rounded-full text-xs font-medium ${
-                      user.perfil === "ROLE_GESTOR" 
-                        ? "bg-blue-100 text-blue-800" 
-                        : "bg-gray-100 text-gray-800"
-                    }`}>
-                      {user.perfil}
-                    </span>
-                  </TableCell>
-                  <TableCell>
-                    <div className="flex gap-2">
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleEditUser(user.id)}
-                      >
-                        <Pencil className="w-4 h-4" />
-                      </Button>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleDeleteUser(user.id)}
-                        className="text-red-600 hover:text-red-700"
-                      >
-                        <Trash2 className="w-4 h-4" />
-                      </Button>
-                    </div>
+              {loading ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    Carregando usuários...
                   </TableCell>
                 </TableRow>
-              ))}
+              ) : users.length === 0 ? (
+                <TableRow>
+                  <TableCell colSpan={6} className="text-center">
+                    Nenhum usuário encontrado.
+                  </TableCell>
+                </TableRow>
+              ) : (
+                users.map((user: any) => (
+                  <TableRow key={user.id}>
+                    <TableCell>{user.id.slice(0, 8)}...</TableCell>
+                    <TableCell className="font-medium">{user.name}</TableCell>
+                    <TableCell>{user.email}</TableCell>
+                    <TableCell>-</TableCell>
+                    <TableCell>
+                      <span className={`px-2 py-1 rounded-full text-xs font-medium ${
+                        user.role === "admin" 
+                          ? "bg-red-100 text-red-800" 
+                          : "bg-gray-100 text-gray-800"
+                      }`}>
+                        {user.role === "admin" ? "ADMIN" : "USUÁRIO"}
+                      </span>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-2">
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleEditUser(user.id)}
+                        >
+                          <Pencil className="w-4 h-4" />
+                        </Button>
+                        <Button
+                          variant="outline"
+                          size="sm"
+                          onClick={() => handleDeleteUser(user.id)}
+                          className="text-red-600 hover:text-red-700"
+                        >
+                          <Trash2 className="w-4 h-4" />
+                        </Button>
+                      </div>
+                    </TableCell>
+                  </TableRow>
+                ))
+              )}
             </TableBody>
           </Table>
         </CardContent>
