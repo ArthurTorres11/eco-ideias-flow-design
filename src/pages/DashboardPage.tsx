@@ -20,11 +20,11 @@ import Header from "@/components/Header";
 import { useAuth } from "@/contexts/AuthContext";
 import { useIdeas } from "@/contexts/IdeasContext";
 import ChatPopup from "@/components/ChatPopup";
-import { ThemeToggle } from "@/components/ThemeToggle";
+import { Plus } from "lucide-react";
 
 const DashboardPage = () => {
   const navigate = useNavigate();
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   const { getUserIdeas } = useIdeas();
 
   // Get user's ideas
@@ -117,7 +117,16 @@ const DashboardPage = () => {
               </Button>
               <div className="absolute -top-2 -right-2 w-4 h-4 bg-yellow-400 rounded-full animate-pulse"></div>
             </div>
-            <ThemeToggle />
+            <Button
+              onClick={async () => {
+                await logout();
+                navigate("/");
+              }}
+              variant="outline"
+              className="text-red-600 border-red-600 hover:bg-red-50"
+            >
+              Sair
+            </Button>
           </div>
         </section>
 
